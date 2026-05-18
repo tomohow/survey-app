@@ -5,90 +5,97 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body{font-family:-apple-system;background:#111;color:#fff;padding:10px;}
+:root{--bg:#000;--card:#1c1c1e;--text:#fff;--border:#333;}
+body{font-family:-apple-system;background:var(--bg);color:var(--text);padding:10px;}
 
 input,button{
-  width:100%;padding:12px;font-size:18px;margin-top:5px;
-  border-radius:8px;border:1px solid #333;background:#222;color:#fff;
+ width:100%;padding:14px;font-size:18px;margin-top:6px;
+ border-radius:10px;border:1px solid var(--border);
+ background:var(--card);color:var(--text);
 }
 
 button{background:#007aff;}
 
-.smallBtn{
-  padding:4px 6px;
-  font-size:12px;
-  width:auto;
-}
+.row{display:flex;gap:6px;}
+.row input{flex:1;}
 
 table{width:100%;border-collapse:collapse;margin-top:10px;}
-td,th{border:1px solid #444;padding:5px;text-align:center;}
+td,th{border:1px solid var(--border);padding:6px;text-align:center;}
 th{background:#007aff;}
 
-canvas{background:#fff;margin-top:10px;border-radius:8px;}
+.smallBtn{font-size:12px;padding:4px 6px;width:auto;}
+
+.toggle{
+ background:#444;
+ padding:3px 6px;
+ border-radius:5px;
+ font-size:11px;
+}
+
+canvas{background:#000;margin-top:10px;border-radius:10px;}
 </style>
 </head>
 
 <body>
 
-<h3>初期設定</h3>
-<input id="initGH" inputmode="decimal" placeholder="初期GH（BM）">
-
-<button onclick="setInit()">初期設定</button>
-
-<h3>現場情報</h3>
-<input id="place" placeholder="地点名">
-<input id="name1" placeholder="測量者①">
-<input id="name2" placeholder="測量者②">
+<h3>初期</h3>
+<input id="bmName" placeholder="測点名（BM）">
+<input id="initGH" type="number" step="0.001" placeholder="初期GH">
+<button onclick="setInit()">開始</button>
 
 <h3>入力</h3>
 <input id="point" placeholder="測点">
-<input id="sp" inputmode="decimal" placeholder="SP">
-<input id="fs" inputmode="decimal" placeholder="FS">
+<div class="row">
+  <input id="sp" type="number" step="0.001" placeholder="SP">
+  <input id="fs" type="number" step="0.001" placeholder="FS">
+</div>
 
 <button onclick="add()">追加</button>
 <button onclick="downloadCSV()">CSV</button>
 
 <table>
 <thead>
-<tr><th>測点</th><th>SP</th><th>IH</th><th>FS</th><th>GH</th><th></th></tr>
+<tr>
+<th>測点</th><th>SP</th><th>IH</th><th>FS</th><th>GH</th>
+<th>図</th><th></th>
+</tr>
 </thead>
 <tbody id="table"></tbody>
 </table>
 
-<canvas id="chart" width="300" height="200"></canvas>
+<canvas id="chart" width="320" height="200"></canvas>
 
 <script>
 
-let data = JSON.parse(localStorage.getItem("level")||"[]");
-let overrideIH = null;
+let data=[];
+let baseIH=null;
+let overrideIH=null;
 
-// 初期GH設定
+// 初期設定
 function setInit(){
-  const v = parseFloat(initGH.value);
-  if(isNaN(v)) return alert("入力して");
-  data = [{point:"BM",gh:v,ihSource:"初期"}];
-  localStorage.setItem("level",JSON.stringify(data));
-  render();
+  let gh=parseFloat(initGH.value);
+  if(isNaN(gh)) return alert("数値入力");
+
+  baseIH = gh;
+
+  data=[{
+    point:(bmName.value||"BM")+" (BM)",
+    gh:gh,
+    use:true
+  }];
+
+  save();
 }
 
-// 自動連番
-function autoPoint(){
-  let last = data[data.length-1];
-  let m = last.point.match(/No\.(\d+)/);
-  if(m){
-    return "No."+(parseInt(m[1])+1);
-  }
-  return "";
-}
-
+// 追加
 function add(){
-  let p = point.value || autoPoint();
-
+  let p=point.value;
   let spV=parseFloat(sp.value);
   let fsV=parseFloat(fs.value);
 
-  let last = data[data.length-1];
-  let ih = overrideIH!==null ? overrideIH : last.gh;
+  if(!p) return alert("測点入力");
+
+  let ih = overrideIH!==null ? overrideIH : baseIH;
 
   let gh="";
   if(!isNaN(fsV)){
@@ -97,98 +104,122 @@ function add(){
 
   data.push({
     point:p,
-    sp:spV||"",
+    sp:isNaN(spV)?"":spV,
     ih:ih,
-    fs:fsV||"",
+    fs:isNaN(fsV)?"":fsV,
     gh:gh,
-    ihSource:overrideIH!==null?"変更":last.point
+    use:true
   });
 
   overrideIH=null;
 
-  localStorage.setItem("level",JSON.stringify(data));
-
   point.value="";sp.value="";fs.value="";
-  render();
+  save();
 }
 
 // GHタップ
 function copyGH(v){
-  if(v==="") return;
-  overrideIH=v;
-  alert("次IH="+v);
+ if(v==="") return;
+ overrideIH=v;
+ alert("次のIH="+v);
+}
+
+// 表示ON/OFF
+function toggle(i){
+ data[i].use=!data[i].use;
+ save();
 }
 
 // 削除
 function del(i){
-  data.splice(i,1);
-  localStorage.setItem("level",JSON.stringify(data));
-  render();
+ data.splice(i,1);
+ save();
+}
+
+// 保存
+function save(){
+ localStorage.setItem("level",JSON.stringify(data));
+ render();
 }
 
 // 表示
 function render(){
-  table.innerHTML="";
-  data.forEach((d,i)=>{
-    let tr=document.createElement("tr");
-    tr.innerHTML=`
-      <td>${d.point}</td>
-      <td>${d.sp||""}</td>
-      <td>${d.ih?.toFixed?.(3)||""}</td>
-      <td>${d.fs||""}</td>
-      <td onclick="copyGH(${d.gh})">
-        ${d.gh!==""?Number(d.gh).toFixed(3):""}
-      </td>
-      <td><button class="smallBtn" onclick="del(${i})">×</button></td>
-    `;
-    table.appendChild(tr);
-  });
+ table.innerHTML="";
 
-  drawChart();
+ data.forEach((d,i)=>{
+  let tr=document.createElement("tr");
+
+  tr.innerHTML=`
+   <td>${d.point}</td>
+   <td>${d.sp||""}</td>
+   <td>${d.ih?.toFixed?.(3)||""}</td>
+   <td>${d.fs||""}</td>
+   <td onclick="copyGH(${d.gh})">
+     ${d.gh!==""?Number(d.gh).toFixed(3):""}
+   </td>
+   <td><span class="toggle" onclick="toggle(${i})">${d.use?"ON":"OFF"}</span></td>
+   <td><button class="smallBtn" onclick="del(${i})">×</button></td>
+  `;
+  table.appendChild(tr);
+ });
+
+ draw();
 }
 
 // CSV
 function downloadCSV(){
-  let csv="測点,SP,IH,FS,GH\n";
-  data.forEach(d=>{
-    csv+=`${d.point},${d.sp||""},${d.ih||""},${d.fs||""},${d.gh||""}\n`;
-  });
-  let blob=new Blob([csv]);
-  let a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="level.csv";
-  a.click();
+ let csv="測点,SP,IH,FS,GH\n";
+ data.forEach(d=>{
+  csv+=`${d.point},${d.sp||""},${d.ih||""},${d.fs||""},${d.gh||""}\n`;
+ });
+
+ let blob=new Blob([csv]);
+ let a=document.createElement("a");
+ a.href=URL.createObjectURL(blob);
+ a.download="level.csv";
+ a.click();
 }
 
 // 横断図
-function drawChart(){
-  let ctx=chart.getContext("2d");
-  ctx.clearRect(0,0,300,200);
+function draw(){
+ let ctx=chart.getContext("2d");
+ ctx.clearRect(0,0,320,200);
 
-  let ghList = data.map(d=>d.gh).filter(v=>v!=="");
+ let arr=data.filter(d=>d.use && d.gh!=="");
 
-  if(ghList.length<2) return;
+ if(arr.length<2) return;
 
-  let min=Math.min(...ghList);
-  let max=Math.max(...ghList);
+ let ghList=arr.map(d=>d.gh);
+ let min=Math.min(...ghList);
+ let max=Math.max(...ghList);
 
-  ghList.forEach((v,i)=>{
-    let x=i*(300/ghList.length);
-    let y=200-((v-min)/(max-min))*180;
+ arr.forEach((d,i)=>{
+  let x=i*(320/arr.length);
+  let y=200-((d.gh-min)/(max-min))*180;
 
-    ctx.fillRect(x,y,3,3);
+  ctx.fillStyle="#0af";
+  ctx.fillRect(x,y,4,4);
 
-    if(i>0){
-      let pv=ghList[i-1];
-      let py=200-((pv-min)/(max-min))*180;
-      ctx.beginPath();
-      ctx.moveTo((i-1)*(300/ghList.length),py);
-      ctx.lineTo(x,y);
-      ctx.stroke();
-    }
-  });
+  if(i>0){
+    let p=arr[i-1];
+    let px=(i-1)*(320/arr.length);
+    let py=200-((p.gh-min)/(max-min))*180;
+
+    ctx.beginPath();
+    ctx.moveTo(px,py);
+    ctx.lineTo(x,y);
+    ctx.strokeStyle="#0af";
+    ctx.stroke();
+  }
+ });
 }
 
+// 起動時
+let saved=localStorage.getItem("level");
+if(saved){
+ data=JSON.parse(saved);
+ baseIH=data[0]?.gh||null;
+}
 render();
 
 </script>
