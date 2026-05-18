@@ -3,44 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>レベルブック</title>
 
 <style>
-:root{
-  --bg:#f2f2f7; --card:#fff; --text:#000; --border:#ddd;
-}
-@media (prefers-color-scheme: dark){
-  :root{
-    --bg:#000; --card:#1c1c1e; --text:#fff; --border:#333;
-  }
-}
-
-body{font-family:-apple-system;background:var(--bg);color:var(--text);padding:10px;}
-
+body{font-family:-apple-system;padding:10px;background:#111;color:#fff;}
 input,button{
-  width:100%; padding:12px; font-size:18px;
-  margin-top:5px; border-radius:8px;
-  border:1px solid var(--border);
-  background:var(--card); color:var(--text);
+  width:100%;padding:12px;font-size:18px;margin-top:5px;
+  border-radius:8px;border:1px solid #333;background:#222;color:white;
 }
-
-button{background:#007aff;color:white;border:none;}
-
-.flex{display:flex; gap:5px;}
-.flex input{flex:1;}
-
-table{
-  width:100%; border-collapse:collapse; background:var(--card);
-  font-size:13px;
-}
-td,th{
-  border:1px solid var(--border);
-  padding:4px;
-  text-align:center;
-}
-th{background:#007aff;color:white;}
-
-.tag{font-size:10px;color:#aaa;}
+button{background:#007aff;}
+table{width:100%;border-collapse:collapse;margin-top:10px;}
+td,th{border:1px solid #444;padding:5px;text-align:center;}
+th{background:#007aff;}
+.small{font-size:10px;color:#aaa;}
 </style>
 </head>
 
@@ -48,39 +22,27 @@ th{background:#007aff;color:white;}
 
 <h3>現場情報</h3>
 <input id="place" placeholder="地点名">
-<input id="surveyor1" placeholder="測量者①">
-<input id="surveyor2" placeholder="測量者②">
+<input id="name1" placeholder="測量者①">
+<input id="name2" placeholder="測量者②">
 
 <h3>入力</h3>
 
 <input id="point" list="points" placeholder="測点名">
 <datalist id="points">
-<option>BM</option>
-<option>No.1</option>
-<option>No.2</option>
-<option>No.3</option>
-<option>SP.1</option>
-<option>SP.2</option>
+<option>BM</option><option>No.1</option><option>No.2</option>
+<option>SP.1</option><option>SP.2</option>
 </datalist>
 
-<div class="flex">
-  <input id="sp" inputmode="decimal" placeholder="SP">
-  <input id="bs" inputmode="decimal" placeholder="BS">
-</div>
-
-<div class="flex">
-  <input id="ih" inputmode="decimal" placeholder="IH">
-  <input id="fs" inputmode="decimal" placeholder="FS">
-</div>
+<input id="sp" inputmode="decimal" placeholder="SP">
+<input id="fs" inputmode="decimal" placeholder="FS">
 
 <button onclick="add()">追加</button>
-
-<h3>レベル</h3>
+<button onclick="downloadCSV()">CSV出力</button>
 
 <table>
 <thead>
 <tr>
-<th>測点</th><th>SP</th><th>BS</th><th>IH</th><th>FS</th><th>GH</th>
+<th>測点</th><th>SP</th><th>IH</th><th>FS</th><th>GH</th><th>操作</th>
 </tr>
 </thead>
 <tbody id="table"></tbody>
@@ -89,58 +51,64 @@ th{background:#007aff;color:white;}
 <script>
 
 let data = JSON.parse(localStorage.getItem("level")||"[]");
-let currentIH = null;
-let ihSource = "";
 
-// 初回
+// 初期
 if(data.length===0){
-  data.push({point:"BM",gh:100});
+  data.push({point:"BM",gh:100,ihSource:"初期"});
 }
 
+let overrideIH = null; // GHタップで変更されるIH
+
 function add(){
-  const p = point.value;
-  const spV = parseFloat(sp.value);
-  const bsV = parseFloat(bs.value);
-  const ihV = parseFloat(ih.value);
-  const fsV = parseFloat(fs.value);
+
+  const p=point.value;
+  const spV=parseFloat(sp.value);
+  const fsV=parseFloat(fs.value);
+
+  let last = data[data.length-1];
+
+  // IH決定（override優先）
+  let ih = overrideIH !== null ? overrideIH : last.gh;
 
   let gh = "";
-
-  // IH手入力優先
-  if(!isNaN(ihV)){
-    currentIH = ihV;
-    ihSource = "手入力";
-  }
-
-  // FSがあればGH計算
-  if(!isNaN(fsV) && currentIH !== null){
-    gh = currentIH - fsV;
+  if(!isNaN(fsV)){
+    gh = ih - fsV;
   }
 
   data.push({
     point:p,
     sp:spV||"",
-    bs:bsV||"",
-    ih:currentIH||"",
+    ih:ih,
     fs:fsV||"",
     gh:gh,
-    ihSource:ihSource
+    ihSource:overrideIH!==null ? "変更" : last.point
   });
+
+  overrideIH = null;
 
   localStorage.setItem("level",JSON.stringify(data));
 
-  function clear(){
-  point.value="";
-  sp.value="";
-  bs.value="";
-  ih.value="";
-  fs.value="";
+  point.value="";sp.value="";fs.value="";
+  render();
 }
 
-clear();
-render();
+// GHタップ → 次回IH変更
+function copyGH(val){
+  if(val==="") return;
+  overrideIH = val;
+  alert("次のIHにセット："+val);
 }
 
+// 削除
+function del(i){
+  if(confirm("削除する？")){
+    data.splice(i,1);
+    localStorage.setItem("level",JSON.stringify(data));
+    render();
+  }
+}
+
+// 表示
 function render(){
   table.innerHTML="";
 
@@ -150,24 +118,35 @@ function render(){
     tr.innerHTML=`
     <td>${d.point}</td>
     <td>${d.sp||""}</td>
-    <td>${d.bs||""}</td>
-    <td>${d.ih||""}<div class="tag">${d.ihSource||""}</div></td>
+    <td>${d.ih?.toFixed?.(3)||""}<div class="small">${d.ihSource||""}</div></td>
     <td>${d.fs||""}</td>
-    <td onclick="copyGH(${d.gh},'${d.point}')">
-      ${d.gh!=="" ? Number(d.gh).toFixed(3) : ""}
+    <td onclick="copyGH(${d.gh})">
+      ${d.gh!==""?Number(d.gh).toFixed(3):""}
     </td>
+    <td><button onclick="del(${i})">削除</button></td>
     `;
 
     table.appendChild(tr);
   });
 }
 
-// GHタップでIHコピー
-function copyGH(val, pointName){
-  if(val==="") return;
-  currentIH = val;
-  ihSource = pointName;
-  alert("IHにセット：" + val + "（" + pointName + "参照）");
+// CSV
+function downloadCSV(){
+  let csv="地点名,"+place.value+"\n";
+  csv+="測量者1,"+name1.value+"\n";
+  csv+="測量者2,"+name2.value+"\n\n";
+
+  csv+="測点,SP,IH,FS,GH\n";
+
+  data.forEach(d=>{
+    csv+=`${d.point},${d.sp||""},${d.ih||""},${d.fs||""},${d.gh||""}\n`;
+  });
+
+  let blob=new Blob([csv],{type:"text/csv"});
+  let a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="level.csv";
+  a.click();
 }
 
 render();
