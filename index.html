@@ -5,13 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-:root{--bg:#000;--card:#1c1c1e;--text:#fff;--border:#333;}
-body{font-family:-apple-system;background:var(--bg);color:var(--text);padding:10px;}
+body{font-family:-apple-system;background:#000;color:#fff;padding:10px;}
 
 input,button{
  width:100%;padding:14px;font-size:18px;margin-top:6px;
- border-radius:10px;border:1px solid var(--border);
- background:var(--card);color:var(--text);
+ border-radius:10px;border:1px solid #333;
+ background:#1c1c1e;color:#fff;
 }
 
 button{background:#007aff;}
@@ -20,7 +19,7 @@ button{background:#007aff;}
 .row input{flex:1;}
 
 table{width:100%;border-collapse:collapse;margin-top:10px;}
-td,th{border:1px solid var(--border);padding:6px;text-align:center;}
+td,th{border:1px solid #333;padding:6px;text-align:center;}
 th{background:#007aff;}
 
 .smallBtn{font-size:12px;padding:4px 6px;width:auto;}
@@ -33,14 +32,23 @@ th{background:#007aff;}
 }
 
 canvas{background:#000;margin-top:10px;border-radius:10px;}
+.meta{font-size:12px;color:#aaa;margin-bottom:10px;}
 </style>
 </head>
 
 <body>
 
+<h3>現場情報</h3>
+<input id="place" placeholder="地点名">
+<input id="observer1" placeholder="測量者①">
+<input id="observer2" placeholder="測量者②">
+
+<div class="meta" id="now"></div>
+
 <h3>初期</h3>
 <input id="bmName" placeholder="測点名（BM）">
 <input id="initGH" type="number" step="0.001" placeholder="初期GH">
+
 <button onclick="setInit()">開始</button>
 
 <h3>入力</h3>
@@ -56,8 +64,7 @@ canvas{background:#000;margin-top:10px;border-radius:10px;}
 <table>
 <thead>
 <tr>
-<th>測点</th><th>SP</th><th>IH</th><th>FS</th><th>GH</th>
-<th>図</th><th></th>
+<th>測点</th><th>SP</th><th>IH</th><th>FS</th><th>GH</th><th>図</th><th></th>
 </tr>
 </thead>
 <tbody id="table"></tbody>
@@ -71,60 +78,67 @@ let data=[];
 let baseIH=null;
 let overrideIH=null;
 
-// 初期設定
+// 日時
+function updateTime(){
+ let now=new Date();
+ document.getElementById("now").innerText=
+   "日時："+now.toLocaleString();
+}
+setInterval(updateTime,1000);
+updateTime();
+
+// 初期
 function setInit(){
-  let gh=parseFloat(initGH.value);
-  if(isNaN(gh)) return alert("数値入力");
+ let gh=parseFloat(initGH.value);
+ if(isNaN(gh)) return alert("初期GH入力");
 
-  baseIH = gh;
+ baseIH=gh;
 
-  data=[{
-    point:(bmName.value||"BM")+" (BM)",
-    gh:gh,
-    use:true
-  }];
+ data=[{
+  point:(bmName.value||"BM")+" (BM)",
+  gh:gh,
+  use:true
+ }];
 
-  save();
+ save();
 }
 
 // 追加
 function add(){
-  let p=point.value;
-  let spV=parseFloat(sp.value);
-  let fsV=parseFloat(fs.value);
+ let p=point.value;
+ let spV=parseFloat(sp.value);
+ let fsV=parseFloat(fs.value);
 
-  if(!p) return alert("測点入力");
+ if(!p) return alert("測点入力");
 
-  let ih = overrideIH!==null ? overrideIH : baseIH;
+ let ih = overrideIH!==null ? overrideIH : baseIH;
 
-  let gh="";
-  if(!isNaN(fsV)){
-    gh = ih - fsV;
-  }
+ let gh="";
+ if(!isNaN(fsV)){
+  gh = Number(ih) - Number(fsV);
+ }
 
-  data.push({
-    point:p,
-    sp:isNaN(spV)?"":spV,
-    ih:ih,
-    fs:isNaN(fsV)?"":fsV,
-    gh:gh,
-    use:true
-  });
+ data.push({
+  point:p,
+  sp:isNaN(spV)?"":spV,
+  ih:ih,
+  fs:isNaN(fsV)?"":fsV,
+  gh:gh,
+  use:true
+ });
 
-  overrideIH=null;
-
-  point.value="";sp.value="";fs.value="";
-  save();
+ point.value="";sp.value="";fs.value="";
+ save();
 }
 
-// GHタップ
+// GHタップ（以降ずっとIH変更）
 function copyGH(v){
- if(v==="") return;
- overrideIH=v;
- alert("次のIH="+v);
+ if(v==="" || isNaN(v)) return;
+ overrideIH=Number(v);
+ alert("IH変更："+v);
 }
 
-// 表示ON/OFF
+// ON/OFF
 function toggle(i){
  data[i].use=!data[i].use;
  save();
@@ -155,9 +169,12 @@ function render(){
    <td>${d.ih?.toFixed?.(3)||""}</td>
    <td>${d.fs||""}</td>
    <td onclick="copyGH(${d.gh})">
-     ${d.gh!==""?Number(d.gh).toFixed(3):""}
+     ${(d.gh!==""&&!isNaN(d.gh))
+        ?Number(d.gh).toFixed(3):""}
    </td>
-   <td><span class="toggle" onclick="toggle(${i})">${d.use?"ON":"OFF"}</span></td>
+   <td><span class="toggle" onclick="toggle(${i})">
+     ${d.use?"ON":"OFF"}
+   </span></td>
    <td><button class="smallBtn" onclick="del(${i})">×</button></td>
   `;
   table.appendChild(tr);
@@ -168,7 +185,13 @@ function render(){
 
 // CSV
 function downloadCSV(){
- let csv="測点,SP,IH,FS,GH\n";
+ let csv=
+ `地点名,${place.value}
+測量者1,${observer1.value}
+測量者2,${observer2.value}\n\n`;
+
+ csv+="測点,SP,IH,FS,GH\n";
+
  data.forEach(d=>{
   csv+=`${d.point},${d.sp||""},${d.ih||""},${d.fs||""},${d.gh||""}\n`;
  });
@@ -180,12 +203,12 @@ function downloadCSV(){
  a.click();
 }
 
-// 横断図
+// グラフ
 function draw(){
  let ctx=chart.getContext("2d");
  ctx.clearRect(0,0,320,200);
 
- let arr=data.filter(d=>d.use && d.gh!=="");
+ let arr=data.filter(d=>d.use&&d.gh!=="");
 
  if(arr.length<2) return;
 
@@ -201,25 +224,26 @@ function draw(){
   ctx.fillRect(x,y,4,4);
 
   if(i>0){
-    let p=arr[i-1];
-    let px=(i-1)*(320/arr.length);
-    let py=200-((p.gh-min)/(max-min))*180;
+   let p=arr[i-1];
+   let px=(i-1)*(320/arr.length);
+   let py=200-((p.gh-min)/(max-min))*180;
 
-    ctx.beginPath();
-    ctx.moveTo(px,py);
-    ctx.lineTo(x,y);
-    ctx.strokeStyle="#0af";
-    ctx.stroke();
+   ctx.beginPath();
+   ctx.moveTo(px,py);
+   ctx.lineTo(x,y);
+   ctx.strokeStyle="#0af";
+   ctx.stroke();
   }
  });
 }
 
-// 起動時
+// 起動時読込
 let saved=localStorage.getItem("level");
 if(saved){
  data=JSON.parse(saved);
  baseIH=data[0]?.gh||null;
 }
+
 render();
 
 </script>
