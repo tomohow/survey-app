@@ -5,20 +5,35 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body{font-family:-apple-system;padding:10px;background:#111;color:#fff;}
+body{font-family:-apple-system;background:#111;color:#fff;padding:10px;}
+
 input,button{
   width:100%;padding:12px;font-size:18px;margin-top:5px;
-  border-radius:8px;border:1px solid #333;background:#222;color:white;
+  border-radius:8px;border:1px solid #333;background:#222;color:#fff;
 }
+
 button{background:#007aff;}
+
+.smallBtn{
+  padding:4px 6px;
+  font-size:12px;
+  width:auto;
+}
+
 table{width:100%;border-collapse:collapse;margin-top:10px;}
 td,th{border:1px solid #444;padding:5px;text-align:center;}
 th{background:#007aff;}
-.small{font-size:10px;color:#aaa;}
+
+canvas{background:#fff;margin-top:10px;border-radius:8px;}
 </style>
 </head>
 
 <body>
+
+<h3>初期設定</h3>
+<input id="initGH" inputmode="decimal" placeholder="初期GH（BM）">
+
+<button onclick="setInit()">初期設定</button>
 
 <h3>現場情報</h3>
 <input id="place" placeholder="地点名">
@@ -26,51 +41,56 @@ th{background:#007aff;}
 <input id="name2" placeholder="測量者②">
 
 <h3>入力</h3>
-
-<input id="point" list="points" placeholder="測点名">
-<datalist id="points">
-<option>BM</option><option>No.1</option><option>No.2</option>
-<option>SP.1</option><option>SP.2</option>
-</datalist>
-
+<input id="point" placeholder="測点">
 <input id="sp" inputmode="decimal" placeholder="SP">
 <input id="fs" inputmode="decimal" placeholder="FS">
 
 <button onclick="add()">追加</button>
-<button onclick="downloadCSV()">CSV出力</button>
+<button onclick="downloadCSV()">CSV</button>
 
 <table>
 <thead>
-<tr>
-<th>測点</th><th>SP</th><th>IH</th><th>FS</th><th>GH</th><th>操作</th>
-</tr>
+<tr><th>測点</th><th>SP</th><th>IH</th><th>FS</th><th>GH</th><th></th></tr>
 </thead>
 <tbody id="table"></tbody>
 </table>
 
+<canvas id="chart" width="300" height="200"></canvas>
+
 <script>
 
 let data = JSON.parse(localStorage.getItem("level")||"[]");
+let overrideIH = null;
 
-// 初期
-if(data.length===0){
-  data.push({point:"BM",gh:100,ihSource:"初期"});
+// 初期GH設定
+function setInit(){
+  const v = parseFloat(initGH.value);
+  if(isNaN(v)) return alert("入力して");
+  data = [{point:"BM",gh:v,ihSource:"初期"}];
+  localStorage.setItem("level",JSON.stringify(data));
+  render();
 }
 
-let overrideIH = null; // GHタップで変更されるIH
+// 自動連番
+function autoPoint(){
+  let last = data[data.length-1];
+  let m = last.point.match(/No\.(\d+)/);
+  if(m){
+    return "No."+(parseInt(m[1])+1);
+  }
+  return "";
+}
 
 function add(){
+  let p = point.value || autoPoint();
 
-  const p=point.value;
-  const spV=parseFloat(sp.value);
-  const fsV=parseFloat(fs.value);
+  let spV=parseFloat(sp.value);
+  let fsV=parseFloat(fs.value);
 
   let last = data[data.length-1];
+  let ih = overrideIH!==null ? overrideIH : last.gh;
 
-  // IH決定（override優先）
-  let ih = overrideIH !== null ? overrideIH : last.gh;
-
-  let gh = "";
+  let gh="";
   if(!isNaN(fsV)){
     gh = ih - fsV;
   }
@@ -81,10 +101,10 @@ function add(){
     ih:ih,
     fs:fsV||"",
     gh:gh,
-    ihSource:overrideIH!==null ? "変更" : last.point
+    ihSource:overrideIH!==null?"変更":last.point
   });
 
-  overrideIH = null;
+  overrideIH=null;
 
   localStorage.setItem("level",JSON.stringify(data));
 
@@ -92,61 +112,81 @@ function add(){
   render();
 }
 
-// GHタップ → 次回IH変更
-function copyGH(val){
-  if(val==="") return;
-  overrideIH = val;
-  alert("次のIHにセット："+val);
+// GHタップ
+function copyGH(v){
+  if(v==="") return;
+  overrideIH=v;
+  alert("次IH="+v);
 }
 
 // 削除
 function del(i){
-  if(confirm("削除する？")){
-    data.splice(i,1);
-    localStorage.setItem("level",JSON.stringify(data));
-    render();
-  }
+  data.splice(i,1);
+  localStorage.setItem("level",JSON.stringify(data));
+  render();
 }
 
 // 表示
 function render(){
   table.innerHTML="";
-
   data.forEach((d,i)=>{
     let tr=document.createElement("tr");
-
     tr.innerHTML=`
-    <td>${d.point}</td>
-    <td>${d.sp||""}</td>
-    <td>${d.ih?.toFixed?.(3)||""}<div class="small">${d.ihSource||""}</div></td>
-    <td>${d.fs||""}</td>
-    <td onclick="copyGH(${d.gh})">
-      ${d.gh!==""?Number(d.gh).toFixed(3):""}
-    </td>
-    <td><button onclick="del(${i})">削除</button></td>
+      <td>${d.point}</td>
+      <td>${d.sp||""}</td>
+      <td>${d.ih?.toFixed?.(3)||""}</td>
+      <td>${d.fs||""}</td>
+      <td onclick="copyGH(${d.gh})">
+        ${d.gh!==""?Number(d.gh).toFixed(3):""}
+      </td>
+      <td><button class="smallBtn" onclick="del(${i})">×</button></td>
     `;
-
     table.appendChild(tr);
   });
+
+  drawChart();
 }
 
 // CSV
 function downloadCSV(){
-  let csv="地点名,"+place.value+"\n";
-  csv+="測量者1,"+name1.value+"\n";
-  csv+="測量者2,"+name2.value+"\n\n";
-
-  csv+="測点,SP,IH,FS,GH\n";
-
+  let csv="測点,SP,IH,FS,GH\n";
   data.forEach(d=>{
     csv+=`${d.point},${d.sp||""},${d.ih||""},${d.fs||""},${d.gh||""}\n`;
   });
-
-  let blob=new Blob([csv],{type:"text/csv"});
+  let blob=new Blob([csv]);
   let a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
   a.download="level.csv";
   a.click();
+}
+
+// 横断図
+function drawChart(){
+  let ctx=chart.getContext("2d");
+  ctx.clearRect(0,0,300,200);
+
+  let ghList = data.map(d=>d.gh).filter(v=>v!=="");
+
+  if(ghList.length<2) return;
+
+  let min=Math.min(...ghList);
+  let max=Math.max(...ghList);
+
+  ghList.forEach((v,i)=>{
+    let x=i*(300/ghList.length);
+    let y=200-((v-min)/(max-min))*180;
+
+    ctx.fillRect(x,y,3,3);
+
+    if(i>0){
+      let pv=ghList[i-1];
+      let py=200-((pv-min)/(max-min))*180;
+      ctx.beginPath();
+      ctx.moveTo((i-1)*(300/ghList.length),py);
+      ctx.lineTo(x,y);
+      ctx.stroke();
+    }
+  });
 }
 
 render();
