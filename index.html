@@ -7,86 +7,171 @@
 
 <style>
 :root{
-  --bg:#f2f2f7;
-  --card:#fff;
-  --text:#000;
-  --border:#ddd;
+  --bg:#f2f2f7; --card:#fff; --text:#000; --border:#ddd;
 }
 @media (prefers-color-scheme: dark){
   :root{
-    --bg:#000;
-    --card:#1c1c1e;
-    --text:#fff;
-    --border:#333;
+    --bg:#000; --card:#1c1c1e; --text:#fff; --border:#333;
   }
 }
-body{font-family:-apple-system;background:var(--bg);color:var(--text);margin:0;padding:10px;}
-input,button{width:100%;padding:12px;font-size:18px;margin-top:5px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);}
-button{background:#007aff;color:#fff;border:none;}
-table{width:100%;border-collapse:collapse;background:var(--card);}
-td,th{border:1px solid var(--border);padding:5px;text-align:center;}
+
+body{font-family:-apple-system;background:var(--bg);color:var(--text);padding:10px;}
+
+input,button{
+  width:100%; padding:12px; font-size:18px;
+  margin-top:5px; border-radius:8px;
+  border:1px solid var(--border);
+  background:var(--card); color:var(--text);
+}
+
+button{background:#007aff;color:white;border:none;}
+
+.flex{display:flex; gap:5px;}
+.flex input{flex:1;}
+
+table{
+  width:100%; border-collapse:collapse; background:var(--card);
+  font-size:13px;
+}
+td,th{
+  border:1px solid var(--border);
+  padding:4px;
+  text-align:center;
+}
 th{background:#007aff;color:white;}
+
+.tag{font-size:10px;color:#aaa;}
 </style>
 </head>
 
 <body>
 
-<h1>レベルブック</h1>
+<h3>現場情報</h3>
+<input id="place" placeholder="地点名">
+<input id="surveyor1" placeholder="測量者①">
+<input id="surveyor2" placeholder="測量者②">
 
-<input id="point" placeholder="測点">
-<input id="bs" type="number" step="0.001" placeholder="BS">
-<input id="ifs" type="number" step="0.001" placeholder="IFS">
-<input id="fs" type="number" step="0.001" placeholder="FS">
+<h3>入力</h3>
+
+<input id="point" list="points" placeholder="測点名">
+<datalist id="points">
+<option>BM</option>
+<option>No.1</option>
+<option>No.2</option>
+<option>No.3</option>
+<option>SP.1</option>
+<option>SP.2</option>
+</datalist>
+
+<div class="flex">
+  <input id="sp" inputmode="decimal" placeholder="SP">
+  <input id="bs" inputmode="decimal" placeholder="BS">
+</div>
+
+<div class="flex">
+  <input id="ih" inputmode="decimal" placeholder="IH">
+  <input id="fs" inputmode="decimal" placeholder="FS">
+</div>
+
 <button onclick="add()">追加</button>
+
+<h3>レベル</h3>
 
 <table>
 <thead>
-<tr><th>測点</th><th>BS</th><th>IFS</th><th>FS</th><th>HI</th><th>RL</th></tr>
+<tr>
+<th>測点</th><th>SP</th><th>BS</th><th>IH</th><th>FS</th><th>GH</th>
+</tr>
 </thead>
 <tbody id="table"></tbody>
 </table>
 
 <script>
-let data=JSON.parse(localStorage.getItem("level")||"[]");
-if(data.length===0){data.push({point:"BM",rl:100});}
+
+let data = JSON.parse(localStorage.getItem("level")||"[]");
+let currentIH = null;
+let ihSource = "";
+
+// 初回
+if(data.length===0){
+  data.push({point:"BM",gh:100});
+}
 
 function add(){
- const p=point.value;
- const bsV=parseFloat(bs.value);
- const ifsV=parseFloat(ifs.value);
- const fsV=parseFloat(fs.value);
+  const p = point.value;
+  const spV = parseFloat(sp.value);
+  const bsV = parseFloat(bs.value);
+  const ihV = parseFloat(ih.value);
+  const fsV = parseFloat(fs.value);
 
- let last=data[data.length-1];
- let hi=last.hi||last.rl;
- let rl=last.rl;
+  let gh = "";
 
- if(!isNaN(bsV)) hi=last.rl+bsV;
- if(!isNaN(ifsV)) rl=hi-ifsV;
- if(!isNaN(fsV)) rl=hi-fsV;
+  // IH手入力優先
+  if(!isNaN(ihV)){
+    currentIH = ihV;
+    ihSource = "手入力";
+  }
 
- data.push({point:p,bs:bsV||"",ifs:ifsV||"",fs:fsV||"",hi:hi,rl:rl});
- localStorage.setItem("level",JSON.stringify(data));
+  // FSがあればGH計算
+  if(!isNaN(fsV) && currentIH !== null){
+    gh = currentIH - fsV;
+  }
 
- point.value="";bs.value="";ifs.value="";fs.value="";
- render();
+  data.push({
+    point:p,
+    sp:spV||"",
+    bs:bsV||"",
+    ih:currentIH||"",
+    fs:fsV||"",
+    gh:gh,
+    ihSource:ihSource
+  });
+
+  localStorage.setItem("level",JSON.stringify(data));
+
+  function clear(){
+  point.value="";
+  sp.value="";
+  bs.value="";
+  ih.value="";
+  fs.value="";
+}
+
+clear();
+render();
 }
 
 function render(){
- table.innerHTML="";
- data.forEach(d=>{
-  let tr=document.createElement("tr");
-  tr.innerHTML=`
+  table.innerHTML="";
+
+  data.forEach((d,i)=>{
+    let tr=document.createElement("tr");
+
+    tr.innerHTML=`
     <td>${d.point}</td>
+    <td>${d.sp||""}</td>
     <td>${d.bs||""}</td>
-    <td>${d.ifs||""}</td>
+    <td>${d.ih||""}<div class="tag">${d.ihSource||""}</div></td>
     <td>${d.fs||""}</td>
-    <td>${d.hi?.toFixed?.(3)||""}</td>
-    <td>${d.rl?.toFixed?.(3)||""}</td>`;
-  table.appendChild(tr);
- });
+    <td onclick="copyGH(${d.gh},'${d.point}')">
+      ${d.gh!=="" ? Number(d.gh).toFixed(3) : ""}
+    </td>
+    `;
+
+    table.appendChild(tr);
+  });
+}
+
+// GHタップでIHコピー
+function copyGH(val, pointName){
+  if(val==="") return;
+  currentIH = val;
+  ihSource = pointName;
+  alert("IHにセット：" + val + "（" + pointName + "参照）");
 }
 
 render();
+
 </script>
 
 </body>
