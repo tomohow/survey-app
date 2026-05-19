@@ -1,4 +1,3 @@
-CSS replaced: True
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -176,34 +175,93 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
 .modal-n{font-size:11px;color:var(--mu);text-align:center;margin-bottom:14px;}
 .modal-a{display:flex;gap:8px;}
 
-/* 環境タブ */
-.env-sel{
-  width:100%;background:var(--sf2);border:1px solid var(--bd);
-  color:var(--tx);font-size:14px;padding:10px 12px;
-  border-radius:var(--rs);outline:none;-webkit-appearance:none;appearance:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237070a0'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 12px center;padding-right:30px;
+/* 定点観測タブ */
+.dp-wrap{
+  display:flex;flex-direction:column;
+  height:100%;overflow:hidden;
 }
-.env-sel:focus{border-color:var(--ac);}
-textarea{
-  width:100%;background:var(--sf2);border:1px solid var(--bd);
-  color:var(--tx);font-size:14px;padding:10px 12px;
-  border-radius:var(--rs);outline:none;-webkit-appearance:none;resize:none;
-  font-family:inherit;line-height:1.5;
+.dp-viewer{
+  flex:1 1 auto;
+  position:relative;overflow:hidden;
+  background:#000;min-height:0;
 }
-textarea:focus{border-color:var(--ac);}
-textarea::placeholder{color:var(--mu);}
-.env-check-group{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
-.env-chk{
-  display:flex;align-items:center;gap:4px;
-  background:var(--sf2);border:1px solid var(--bd);border-radius:6px;
-  padding:5px 10px;font-size:12px;cursor:pointer;user-select:none;
-  transition:border-color .15s,background .15s;
+.dp-empty{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;gap:10px;color:var(--mu);
 }
-.env-chk:has(input:checked){
-  border-color:var(--ac);background:rgba(79,142,247,.15);color:var(--ac);
+.dp-empty-ico{font-size:40px;}
+.dp-empty-txt{font-size:13px;}
+.dp-upload-btn{
+  display:inline-block;cursor:pointer;
+  padding:10px 24px;font-size:14px;font-weight:700;
+  border-radius:var(--r);border:none;
+  background:var(--ac);color:#fff;
 }
-.env-chk input{display:none;}
+.dp-compare{position:relative;width:100%;height:100%;}
+.dp-base-img{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:contain;z-index:2;pointer-events:none;
+}
+.dp-video{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:contain;z-index:1;background:#000;
+}
+.dp-grid{
+  position:absolute;inset:0;width:100%;height:100%;
+  z-index:3;pointer-events:none;
+}
+.dp-date-badge{
+  position:absolute;top:8px;left:8px;z-index:4;
+  background:rgba(0,0,0,.6);color:#fff;
+  font-size:10px;padding:3px 8px;border-radius:8px;
+  backdrop-filter:blur(4px);
+}
+.dp-panel{
+  flex:0 0 auto;
+  background:var(--sf);border-top:1px solid var(--bd);
+  padding:8px 16px;
+}
+.dp-ctrl-row{
+  display:flex;align-items:center;gap:8px;margin-bottom:6px;
+}
+.dp-ctrl-row:last-child{margin-bottom:0;}
+.dp-ctrl-lbl{font-size:11px;color:var(--mu);width:48px;flex-shrink:0;}
+.dp-ctrl-val{font-size:11px;color:var(--ac);width:36px;text-align:right;flex-shrink:0;}
+.dp-slider{
+  flex:1;-webkit-appearance:none;appearance:none;
+  height:3px;border-radius:2px;
+  background:linear-gradient(90deg,var(--ac) var(--val,50%),var(--bd) var(--val,50%));
+  outline:none;cursor:pointer;
+}
+.dp-slider::-webkit-slider-thumb{
+  -webkit-appearance:none;width:18px;height:18px;
+  border-radius:50%;background:var(--ac);cursor:pointer;
+  box-shadow:0 1px 4px rgba(0,0,0,.4);
+}
+.dp-tog{
+  padding:4px 14px;font-size:11px;font-weight:700;
+  border-radius:6px;border:1px solid var(--bd);
+  background:var(--sf2);color:var(--mu);cursor:pointer;
+}
+.dp-tog.active{border-color:var(--pl);color:var(--pl);background:rgba(52,211,153,.1);}
+.dp-btns{
+  flex:0 0 auto;
+  padding:8px 16px;
+  background:var(--bg);border-top:1px solid var(--bd);
+}
+.dp-history{
+  flex:0 0 auto;max-height:120px;overflow-y:auto;
+  background:var(--bg);border-top:1px solid var(--bd);padding:8px 0;
+}
+.dp-hist-item{
+  display:flex;align-items:center;gap:10px;
+  padding:6px 16px;cursor:pointer;
+}
+.dp-hist-item:hover{background:var(--sf);}
+.dp-hist-thumb{width:40px;height:28px;object-fit:cover;border-radius:4px;border:1px solid var(--bd);}
+.dp-hist-info{flex:1;min-width:0;}
+.dp-hist-date{font-size:11px;color:var(--tx);}
+.dp-hist-del{font-size:12px;color:var(--mn);background:transparent;border:none;padding:4px 8px;cursor:pointer;}
 
 /* オフラインバナー */
 .offline-banner{
@@ -248,10 +306,10 @@ textarea::placeholder{color:var(--mu);}
     <div class="time-badge" id="time">--:--</div>
   </div>
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('setup')">設定</button>
-    <button class="tab" onclick="switchTab('measure')">測定</button>
-    <button class="tab" onclick="switchTab('graph')">グラフ</button>
-    <button class="tab" onclick="switchTab('env')">環境</button>
+    <button class="tab active" data-tab="setup">設定</button>
+    <button class="tab" data-tab="measure">測定</button>
+    <button class="tab" data-tab="graph">グラフ</button>
+    <button class="tab" data-tab="env">環境</button>
   </div>
 </div>
 
@@ -346,104 +404,73 @@ textarea::placeholder{color:var(--mu);}
   </div>
 </div>
 
-<!-- 河川環境記録 -->
+<!-- 定点観測 -->
 <div class="sec" id="tab-env">
-  <div class="setup-scroll">
-    <div class="card">
-      <div class="card-lbl">🌊 水況・流況</div>
-      <div class="fields">
-        <div class="row2">
-          <div>
-            <div class="flbl">水位状況</div>
-            <select id="env-water-level" class="env-sel">
-              <option value="">-- 選択 --</option>
-              <option>低水</option><option>平水</option><option>高水</option><option>洪水</option><option>渇水</option>
-            </select>
-          </div>
-          <div>
-            <div class="flbl">流況</div>
-            <select id="env-flow" class="env-sel">
-              <option value="">-- 選択 --</option>
-              <option>清澄</option><option>濁り少</option><option>濁り多</option><option>茶褐色</option><option>白濁</option>
-            </select>
-          </div>
+  <div class="dp-wrap">
+
+    <!-- ビューア（写真 + カメラ重ね合わせ） -->
+    <div class="dp-viewer" id="dp-viewer">
+
+      <!-- 状態A：写真未登録 -->
+      <div class="dp-empty" id="dp-empty">
+        <div class="dp-empty-ico">📷</div>
+        <div class="dp-empty-txt">基準写真を登録してください</div>
+        <label class="btn btn-p dp-upload-btn">
+          写真を選択
+          <input type="file" id="dp-file-input" accept="image/*" style="display:none">
+        </label>
+      </div>
+
+      <!-- 状態B：比較モード -->
+      <div class="dp-compare" id="dp-compare" style="display:none">
+        <!-- 基準写真（半透明オーバーレイ） -->
+        <img id="dp-base-img" class="dp-base-img">
+        <!-- カメラプレビュー -->
+        <video id="dp-video" class="dp-video" autoplay playsinline muted></video>
+        <!-- グリッド線 -->
+        <canvas id="dp-grid" class="dp-grid"></canvas>
+        <!-- 日付バッジ -->
+        <div class="dp-date-badge" id="dp-date-badge"></div>
+      </div>
+    </div>
+
+    <!-- コントロールパネル -->
+    <div class="dp-panel" id="dp-panel" style="display:none">
+      <div class="dp-ctrl-row">
+        <span class="dp-ctrl-lbl">透過度</span>
+        <input type="range" id="dp-opacity" min="0" max="100" value="50" class="dp-slider">
+        <span class="dp-ctrl-val" id="dp-opacity-val">50%</span>
+      </div>
+      <div class="dp-ctrl-row">
+        <span class="dp-ctrl-lbl">グリッド</span>
+        <button class="dp-tog" id="dp-grid-tog" data-on="false">OFF</button>
+        <span class="dp-ctrl-val"></span>
+      </div>
+    </div>
+
+    <!-- ボタン群 -->
+    <div class="dp-btns">
+      <div id="dp-btns-registered" style="display:none">
+        <div class="row2" style="gap:8px;margin-bottom:8px;">
+          <button class="btn btn-p" id="dp-camera-btn">📷 カメラ起動</button>
+          <button class="btn btn-s" id="dp-capture-btn" style="display:none">🔴 撮影保存</button>
         </div>
-        <div>
-          <div class="flbl">概算水深 (m)</div>
-          <input id="env-depth" type="text" inputmode="url" placeholder="例：0.80" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
-        </div>
-        <div>
-          <div class="flbl">概算流速 (m/s)</div>
-          <input id="env-vel" type="text" inputmode="url" placeholder="例：0.30" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+        <div class="row2" style="gap:8px;">
+          <label class="btn btn-s dp-upload-btn" style="text-align:center;display:block;">
+            🔄 写真を更新
+            <input type="file" id="dp-file-input2" accept="image/*" style="display:none">
+          </label>
+          <button class="btn btn-d" id="dp-clear-btn">🗑 削除</button>
         </div>
       </div>
     </div>
-    <div class="card">
-      <div class="card-lbl">🌤 気象・現地状況</div>
-      <div class="fields">
-        <div class="row2">
-          <div>
-            <div class="flbl">天候</div>
-            <select id="env-weather" class="env-sel">
-              <option value="">-- 選択 --</option>
-              <option>晴</option><option>薄曇</option><option>曇</option><option>小雨</option><option>雨</option><option>雪</option><option>霧</option>
-            </select>
-          </div>
-          <div>
-            <div class="flbl">気温 (°C)</div>
-            <input id="env-temp" type="text" inputmode="url" placeholder="例：18.5" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
-          </div>
-        </div>
-        <div class="row2">
-          <div>
-            <div class="flbl">風向</div>
-            <select id="env-wind-dir" class="env-sel">
-              <option value="">-- 選択 --</option>
-              <option>静穏</option><option>N</option><option>NE</option><option>E</option><option>SE</option><option>S</option><option>SW</option><option>W</option><option>NW</option>
-            </select>
-          </div>
-          <div>
-            <div class="flbl">風速 (m/s)</div>
-            <input id="env-wind-speed" type="text" inputmode="url" placeholder="例：2.0" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
-          </div>
-        </div>
-      </div>
+
+    <!-- 撮影済み比較リスト -->
+    <div class="dp-history" id="dp-history" style="display:none">
+      <div class="card-lbl" style="padding:0 16px;margin-bottom:6px;">📂 撮影履歴</div>
+      <div id="dp-history-list"></div>
     </div>
-    <div class="card">
-      <div class="card-lbl">🏔 河床・護岸状況</div>
-      <div class="fields">
-        <div>
-          <div class="flbl">河床材料</div>
-          <div class="env-check-group" id="env-bed">
-            <label class="env-chk"><input type="checkbox" value="岩盤">岩盤</label>
-            <label class="env-chk"><input type="checkbox" value="礫">礫</label>
-            <label class="env-chk"><input type="checkbox" value="砂礫">砂礫</label>
-            <label class="env-chk"><input type="checkbox" value="砂">砂</label>
-            <label class="env-chk"><input type="checkbox" value="シルト">シルト</label>
-            <label class="env-chk"><input type="checkbox" value="粘土">粘土</label>
-          </div>
-        </div>
-        <div>
-          <div class="flbl">護岸状況</div>
-          <div class="env-check-group" id="env-bank">
-            <label class="env-chk"><input type="checkbox" value="良好">良好</label>
-            <label class="env-chk"><input type="checkbox" value="洗掘">洗掘</label>
-            <label class="env-chk"><input type="checkbox" value="崩落">崩落</label>
-            <label class="env-chk"><input type="checkbox" value="堆積">堆積</label>
-            <label class="env-chk"><input type="checkbox" value="植生あり">植生あり</label>
-            <label class="env-chk"><input type="checkbox" value="流木">流木</label>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-lbl">📝 特記事項・所見</div>
-      <div class="fields">
-        <textarea id="env-note" rows="4" placeholder="異常水位・出水痕跡・設備状況・アクセス路の状況など自由記入"></textarea>
-      </div>
-    </div>
-    <button class="btn btn-p" onclick="saveEnv()">環境記録を保存</button>
-    <div id="env-saved-msg" style="display:none;text-align:center;font-size:12px;color:var(--pl);margin-top:4px;">✓ 保存しました</div>
+
   </div>
 </div>
 
@@ -537,10 +564,15 @@ chkOnline();
 
 /* ── タブ ── */
 function switchTab(n){
-  document.querySelectorAll('.tab').forEach((t,i)=>
-    t.classList.toggle('active',['setup','measure','graph','env'][i]===n));
-  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));
-  document.getElementById('tab-'+n).classList.add('active');
+  var tabs = document.querySelectorAll('.tab');
+  for(var i=0;i<tabs.length;i++){
+    tabs[i].classList.remove('active');
+    if(tabs[i].dataset.tab===n) tabs[i].classList.add('active');
+  }
+  var secs = document.querySelectorAll('.sec');
+  for(var j=0;j<secs.length;j++) secs[j].classList.remove('active');
+  var target = document.getElementById('tab-'+n);
+  if(target) target.classList.add('active');
   if(n==='graph') drawChart('chart-full');
 }
 
@@ -791,46 +823,36 @@ function downloadCSV(){
   const o1=document.getElementById('observer1').value;
   const o2=document.getElementById('observer2').value;
   const dt=document.getElementById('survey-date').value;
-  let csv=`地点名,${p}\n観測者①,${o1}\n観測者②,${o2}\n測定日時,${dt}\n\n`;
-  // 環境データをCSVに含める
+  let csv='\uFEFF';
+  csv+='地点名,'+p+'\n';
+  csv+='観測者①,'+o1+'\n';
+  csv+='観測者②,'+o2+'\n';
+  csv+='測定日時,'+dt+'\n\n';
+  /* 環境データ */
   try{
     const env=JSON.parse(localStorage.getItem('lvl4_env')||'{}');
     if(env.waterLevel||env.weather||env.note){
-      csv+='
---- 河川環境記録 ---
-';
-      if(env.savedAt) csv+='記録日時,'+env.savedAt+'
-';
-      if(env.waterLevel) csv+='水位状況,'+env.waterLevel+'
-';
-      if(env.flow) csv+='流況,'+env.flow+'
-';
-      if(env.depth) csv+='概算水深(m),'+env.depth+'
-';
-      if(env.vel) csv+='概算流速(m/s),'+env.vel+'
-';
-      if(env.weather) csv+='天候,'+env.weather+'
-';
-      if(env.temp) csv+='気温(°C),'+env.temp+'
-';
-      if(env.windDir) csv+='風向,'+env.windDir+'
-';
-      if(env.windSpeed) csv+='風速(m/s),'+env.windSpeed+'
-';
-      if(env.bed&&env.bed.length) csv+='河床材料,'+env.bed.join('/')+'
-';
-      if(env.bank&&env.bank.length) csv+='護岸状況,'+env.bank.join('/')+'
-';
-      if(env.note) csv+='特記事項,"'+env.note.replace(/"/g,'""')+'"
-';
-      csv+='
-';
+      csv+='--- 河川環境記録 ---\n';
+      if(env.savedAt)    csv+='記録日時,'+env.savedAt+'\n';
+      if(env.waterLevel) csv+='水位状況,'+env.waterLevel+'\n';
+      if(env.flow)       csv+='流況,'+env.flow+'\n';
+      if(env.depth)      csv+='概算水深(m),'+env.depth+'\n';
+      if(env.vel)        csv+='概算流速(m/s),'+env.vel+'\n';
+      if(env.weather)    csv+='天候,'+env.weather+'\n';
+      if(env.temp)       csv+='気温(°C),'+env.temp+'\n';
+      if(env.windDir)    csv+='風向,'+env.windDir+'\n';
+      if(env.windSpeed)  csv+='風速(m/s),'+env.windSpeed+'\n';
+      if(env.bed&&env.bed.length)  csv+='河床材料,'+env.bed.join('/')+'\n';
+      if(env.bank&&env.bank.length) csv+='護岸状況,'+env.bank.join('/')+'\n';
+      if(env.note) csv+='特記事項,"'+env.note.replace(/"/g,'""')+'"\n';
+      csv+='\n';
     }
   }catch(ex){}
-  csv+='測点,SP,IH,FS,GH
-';
-  data.forEach(d=>{csv+=`${d.point},${d.sp!==''?d.sp:''},${d.ih!=null?d.ih:''},${d.fs!==''?d.fs:''},${d.gh!==''?d.gh:''}\n`;});
-  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  csv+='測点,SP,IH,FS,GH\n';
+  data.forEach(function(d){
+    csv+=d.point+','+(d.sp!==''?d.sp:'')+','+(d.ih!=null?d.ih:'')+','+(d.fs!==''?d.fs:'')+','+(d.gh!==''?d.gh:'')+'\n';
+  });
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   a.download='level_'+new Date().toISOString().slice(0,10)+'.csv';
@@ -865,50 +887,232 @@ function loadAndRender(){
 setTimeout(loadAndRender, 80);
 
 /* ── 河川環境記録 ── */
-function saveEnv(){
-  const envData={
-    waterLevel:document.getElementById('env-water-level').value,
-    flow:document.getElementById('env-flow').value,
-    depth:document.getElementById('env-depth').value,
-    vel:document.getElementById('env-vel').value,
-    weather:document.getElementById('env-weather').value,
-    temp:document.getElementById('env-temp').value,
-    windDir:document.getElementById('env-wind-dir').value,
-    windSpeed:document.getElementById('env-wind-speed').value,
-    bed:Array.from(document.querySelectorAll('#env-bed input:checked')).map(e=>e.value),
-    bank:Array.from(document.querySelectorAll('#env-bank input:checked')).map(e=>e.value),
-    note:document.getElementById('env-note').value,
-    savedAt:new Date().toISOString()
+/* ── 定点観測 ── */
+(function(){
+  var baseImg    = null;   // DataURL
+  var baseDate   = null;   // 撮影日文字列
+  var stream     = null;   // MediaStream
+  var history    = [];     // [{dataUrl, date}]
+  var gridOn     = false;
+
+  /* ローカルストレージから復元 */
+  function dpLoad(){
+    try{
+      var s = localStorage.getItem('lvl4_dp');
+      if(!s) return;
+      var obj = JSON.parse(s);
+      baseImg  = obj.baseImg  || null;
+      baseDate = obj.baseDate || null;
+      history  = obj.history  || [];
+    }catch(e){}
+    dpRender();
+    dpHistRender();
+  }
+
+  function dpSave(){
+    try{
+      localStorage.setItem('lvl4_dp', JSON.stringify({
+        baseImg:baseImg, baseDate:baseDate, history:history
+      }));
+    }catch(e){ alert('容量不足のため保存できませんでした。履歴を削除してください。'); }
+  }
+
+  /* UI切替 */
+  function dpRender(){
+    var hasBase = !!baseImg;
+    document.getElementById('dp-empty').style.display    = hasBase ? 'none' : 'flex';
+    document.getElementById('dp-compare').style.display  = hasBase ? 'block' : 'none';
+    document.getElementById('dp-panel').style.display    = hasBase ? 'block' : 'none';
+    document.getElementById('dp-btns-registered').style.display = hasBase ? 'block' : 'none';
+    if(hasBase){
+      var img = document.getElementById('dp-base-img');
+      img.src = baseImg;
+      img.style.opacity = document.getElementById('dp-opacity').value / 100;
+      document.getElementById('dp-date-badge').textContent = '基準: ' + (baseDate || '');
+    }
+  }
+
+  /* 透過スライダー */
+  var slider = document.getElementById('dp-opacity');
+  var sliderVal = document.getElementById('dp-opacity-val');
+  slider.addEventListener('input', function(){
+    var v = slider.value;
+    sliderVal.textContent = v + '%';
+    slider.style.setProperty('--val', v + '%');
+    var img = document.getElementById('dp-base-img');
+    if(img) img.style.opacity = v / 100;
+  });
+
+  /* グリッドトグル */
+  document.getElementById('dp-grid-tog').addEventListener('click', function(){
+    gridOn = !gridOn;
+    this.textContent = gridOn ? 'ON' : 'OFF';
+    this.classList.toggle('active', gridOn);
+    drawGrid();
+  });
+
+  function drawGrid(){
+    var cv = document.getElementById('dp-grid');
+    var ctx = cv.getContext('2d');
+    var W = cv.clientWidth;
+    var H = cv.clientHeight;
+    cv.width = W; cv.height = H;
+    ctx.clearRect(0,0,W,H);
+    if(!gridOn) return;
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = 0.8;
+    /* 3x3グリッド */
+    for(var i=1;i<3;i++){
+      ctx.beginPath(); ctx.moveTo(W*i/3,0); ctx.lineTo(W*i/3,H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,H*i/3); ctx.lineTo(W,H*i/3); ctx.stroke();
+    }
+    /* 対角線（構図補助） */
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(W,H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(W,0); ctx.lineTo(0,H); ctx.stroke();
+  }
+
+  /* ファイル選択（基準写真登録） */
+  function onFileSelect(file){
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e){
+      baseImg  = e.target.result;
+      baseDate = new Date().toLocaleDateString('ja-JP');
+      dpSave();
+      dpRender();
+    };
+    reader.readAsDataURL(file);
+  }
+  document.getElementById('dp-file-input').addEventListener('change', function(){
+    onFileSelect(this.files[0]);
+  });
+  document.getElementById('dp-file-input2').addEventListener('change', function(){
+    onFileSelect(this.files[0]);
+  });
+
+  /* カメラ起動 */
+  var cameraBtn  = document.getElementById('dp-camera-btn');
+  var captureBtn = document.getElementById('dp-capture-btn');
+  var video      = document.getElementById('dp-video');
+
+  cameraBtn.addEventListener('click', function(){
+    if(stream){
+      /* カメラ停止 */
+      stream.getTracks().forEach(function(t){ t.stop(); });
+      stream = null;
+      video.style.display = 'none';
+      cameraBtn.textContent = '📷 カメラ起動';
+      captureBtn.style.display = 'none';
+    } else {
+      /* カメラ起動 */
+      var constraints = {
+        video:{ facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1080} }
+      };
+      navigator.mediaDevices.getUserMedia(constraints).then(function(s){
+        stream = s;
+        video.srcObject = s;
+        video.style.display = 'block';
+        cameraBtn.textContent = '⏹ カメラ停止';
+        captureBtn.style.display = '';
+        drawGrid();
+      }).catch(function(err){
+        alert('カメラを起動できませんでした: ' + err.message);
+      });
+    }
+  });
+
+  /* 撮影・保存 */
+  captureBtn.addEventListener('click', function(){
+    if(!stream) return;
+    /* videoフレームをcanvasに描画して保存 */
+    var cv = document.createElement('canvas');
+    cv.width  = video.videoWidth;
+    cv.height = video.videoHeight;
+    var ctx = cv.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    var dataUrl = cv.toDataURL('image/jpeg', 0.82);
+    var date = new Date().toLocaleString('ja-JP');
+    history.unshift({ dataUrl:dataUrl, date:date });
+    /* 最大5件保存 */
+    if(history.length > 5) history = history.slice(0,5);
+    dpSave();
+    dpHistRender();
+    /* フラッシュ演出 */
+    var flash = document.createElement('div');
+    flash.style.cssText = 'position:absolute;inset:0;background:#fff;opacity:0.8;z-index:99;pointer-events:none;transition:opacity .3s';
+    document.getElementById('dp-compare').appendChild(flash);
+    setTimeout(function(){ flash.style.opacity='0'; setTimeout(function(){ flash.remove(); },300); }, 50);
+  });
+
+  /* 削除 */
+  document.getElementById('dp-clear-btn').addEventListener('click', function(){
+    if(!confirm('基準写真を削除しますか？')) return;
+    if(stream){ stream.getTracks().forEach(function(t){ t.stop(); }); stream=null; }
+    baseImg=null; baseDate=null;
+    dpSave(); dpRender();
+  });
+
+  /* 撮影履歴レンダリング */
+  function dpHistRender(){
+    var wrap = document.getElementById('dp-history');
+    var list = document.getElementById('dp-history-list');
+    if(!history.length){ wrap.style.display='none'; return; }
+    wrap.style.display='block';
+    list.innerHTML='';
+    history.forEach(function(item, idx){
+      var div = document.createElement('div');
+      div.className='dp-hist-item';
+      var img = document.createElement('img');
+      img.className='dp-hist-thumb'; img.src=item.dataUrl;
+      var info = document.createElement('div');
+      info.className='dp-hist-info';
+      var d = document.createElement('div');
+      d.className='dp-hist-date'; d.textContent=item.date;
+      info.appendChild(d);
+      var del = document.createElement('button');
+      del.className='dp-hist-del'; del.textContent='削除';
+      del.addEventListener('click', function(e){
+        e.stopPropagation();
+        if(confirm('この記録を削除しますか？')){
+          history.splice(idx,1); dpSave(); dpHistRender();
+        }
+      });
+      /* タップで画像DL */
+      img.addEventListener('click', function(){
+        var a = document.createElement('a');
+        a.href = item.dataUrl;
+        a.download = 'survey_' + item.date.replace(/[\/\s:]/g,'-') + '.jpg';
+        a.click();
+      });
+      div.appendChild(img); div.appendChild(info); div.appendChild(del);
+      list.appendChild(div);
+    });
+  }
+
+  /* タブ切替時にグリッド再描画 */
+  var origSwitch = window.switchTab;
+  window.switchTab = function(n){
+    origSwitch(n);
+    if(n==='env'){ setTimeout(drawGrid,50); }
   };
-  try{localStorage.setItem('lvl4_env',JSON.stringify(envData));}catch(e){}
-  const msg=document.getElementById('env-saved-msg');
-  msg.style.display='block';setTimeout(()=>msg.style.display='none',2000);
-}
-function loadEnv(){
-  try{
-    const s=localStorage.getItem('lvl4_env');
-    if(!s) return;
-    const e=JSON.parse(s);
-    if(e.waterLevel) document.getElementById('env-water-level').value=e.waterLevel;
-    if(e.flow)       document.getElementById('env-flow').value=e.flow;
-    if(e.depth)      document.getElementById('env-depth').value=e.depth;
-    if(e.vel)        document.getElementById('env-vel').value=e.vel;
-    if(e.weather)    document.getElementById('env-weather').value=e.weather;
-    if(e.temp)       document.getElementById('env-temp').value=e.temp;
-    if(e.windDir)    document.getElementById('env-wind-dir').value=e.windDir;
-    if(e.windSpeed)  document.getElementById('env-wind-speed').value=e.windSpeed;
-    if(e.bed)        e.bed.forEach(v=>{const el=document.querySelector('#env-bed input[value="'+v+'"]');if(el)el.checked=true;});
-    if(e.bank)       e.bank.forEach(v=>{const el=document.querySelector('#env-bank input[value="'+v+'"]');if(el)el.checked=true;});
-    if(e.note)       document.getElementById('env-note').value=e.note;
-  }catch(ex){}
-}
-setTimeout(loadEnv,120);
+
+  setTimeout(dpLoad, 150);
+})();
+
 
 /* ── オフライン対応：Service Worker を動的生成・登録 ── */
 (function(){
   if(!('serviceWorker' in navigator)) return;
+  /* 古いSWを全て登録解除してからキャッシュ削除 */
+  navigator.serviceWorker.getRegistrations().then(regs=>{
+    regs.forEach(r=>r.unregister());
+  });
+  caches.keys().then(keys=>{
+    keys.filter(k=>k!=='level-survey-v3').forEach(k=>caches.delete(k));
+  });
   /* SW スクリプトを文字列で定義してBlobURLに変換 */
-  const CACHE='level-survey-v1';
+  const CACHE='level-survey-v3';
   const swCode=`
 const CACHE='${CACHE}';
 self.addEventListener('install',e=>{
@@ -946,6 +1150,14 @@ self.addEventListener('fetch',e=>{
       return caches.open(CACHE).then(c=>c.add(location.href));
     })
     .catch(()=>{});
+})();
+/* ── タブクリックイベント登録 ── */
+(function(){
+  document.querySelectorAll('.tab').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      switchTab(btn.dataset.tab);
+    });
+  });
 })();
 </script>
 </body>
