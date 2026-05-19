@@ -2,267 +2,489 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>水準測量</title>
 <style>
-body{font-family:-apple-system;margin:0;background:#000;color:#fff;}
-
-.header,.footer{position:sticky;background:#000;padding:10px;}
-.header{top:0;border-bottom:1px solid #333;}
-.footer{bottom:0;border-top:1px solid #333;}
-
-input,button{
- width:100%;padding:12px;font-size:16px;margin-top:5px;
- border-radius:8px;border:1px solid #333;
- background:#1c1c1e;color:#fff;
+:root{
+  --bg:#0a0a0f;
+  --surface:#13131a;
+  --surface2:#1c1c27;
+  --border:#2a2a3a;
+  --accent:#4f8ef7;
+  --plus:#34d399;
+  --minus:#f87171;
+  --text:#f0f0f8;
+  --muted:#7070a0;
+  --r:14px;
+  --rs:8px;
 }
-
-button{background:#007aff;}
-
-.row{display:flex;gap:5px;}
-.row input{flex:1;}
-
-table{width:100%;border-collapse:collapse;font-size:13px;}
-th,td{border:1px solid #333;padding:5px;text-align:center;}
-th{background:#007aff;}
-
-.smallBtn{font-size:10px;padding:3px 5px;}
-
-.toggle{font-size:10px;padding:2px 4px;background:#444;border-radius:4px;}
-
-.plus{color:#4da3ff;}   /* 青 */
-.minus{color:#ff4d4d;}  /* 赤 */
-
-canvas{width:100%;height:200px;background:#000;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;min-height:100vh;}
+.hdr{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--border);padding:env(safe-area-inset-top,0) 16px 0;}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;padding:12px 0 8px;}
+.app-title{font-size:17px;font-weight:700;}
+.time-badge{font-size:11px;color:var(--muted);background:var(--surface);padding:4px 10px;border-radius:20px;border:1px solid var(--border);}
+.tabs{display:flex;gap:4px;padding:8px 0;}
+.tab{flex:1;padding:9px 4px;font-size:13px;font-weight:600;border:none;border-radius:var(--rs);cursor:pointer;color:var(--muted);background:transparent;transition:all .2s;}
+.tab.active{background:var(--accent);color:#fff;}
+.sec{display:none;}
+.sec.active{display:flex;flex-direction:column;}
+.setup-panel{padding:16px;display:flex;flex-direction:column;gap:12px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;}
+.card-label{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.06em;margin-bottom:10px;}
+.fields{display:flex;flex-direction:column;gap:8px;}
+.field-lbl{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.04em;margin-bottom:3px;}
+.row2{display:flex;gap:8px;}
+.row2>*{flex:1;}
+input[type=text],input[type=number],input[type=datetime-local]{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:16px;padding:12px 14px;border-radius:var(--rs);outline:none;transition:border-color .2s;-webkit-appearance:none;}
+input:focus{border-color:var(--accent);}
+input::placeholder{color:var(--muted);}
+input[type=datetime-local]{color-scheme:dark;}
+.btn{width:100%;padding:14px;font-size:16px;font-weight:700;border:none;border-radius:var(--r);cursor:pointer;transition:transform .1s;-webkit-appearance:none;}
+.btn:active{transform:scale(.97);}
+.btn-p{background:var(--accent);color:#fff;}
+.btn-s{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.btn-d{background:rgba(248,113,113,.12);color:var(--minus);border:1px solid rgba(248,113,113,.25);}
+#tab-measure{overflow-y:auto;padding-bottom:220px;}
+.tbl-wrap{padding:12px 16px 0;}
+.tbl-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;}
+col.c-tog{width:38px;}col.c-pt{width:auto;}col.c-sp{width:50px;}col.c-ih{width:50px;}col.c-fs{width:50px;}col.c-gh{width:58px;}col.c-del{width:34px;}
+thead th{background:var(--surface2);padding:9px 3px;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.04em;text-align:center;border-bottom:1px solid var(--border);}
+tbody tr{border-bottom:1px solid rgba(42,42,58,.7);}
+tbody tr:last-child{border-bottom:none;}
+tbody tr.off{opacity:.3;}
+td{padding:9px 3px;text-align:center;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.td-pt{text-align:left;padding-left:6px;font-weight:600;font-size:12px;}
+.bm-badge{font-size:8px;background:rgba(79,142,247,.2);color:var(--accent);padding:1px 5px;border-radius:8px;border:1px solid rgba(79,142,247,.4);display:inline-block;margin-left:3px;vertical-align:middle;}
+.fs-plus{color:var(--plus);font-weight:600;}
+.fs-minus{color:var(--minus);font-weight:600;}
+.gh-tap{cursor:pointer;text-decoration:underline dotted rgba(112,112,160,.5);}
+.ih-changed{color:var(--accent);font-weight:700;}
+.tog-btn{font-size:9px;padding:3px 4px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;line-height:1.2;}
+.tog-btn.on{border-color:var(--plus);color:var(--plus);}
+.del-btn{background:transparent;border:1px solid rgba(248,113,113,.3);color:var(--minus);font-size:13px;font-weight:700;cursor:pointer;border-radius:5px;padding:3px 6px;line-height:1;}
+.graph-inline{padding:12px 16px 0;}
+.graph-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px;}
+.graph-title{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.05em;margin-bottom:8px;}
+canvas{width:100%;display:block;}
+#chart-inline{height:150px;}
+#chart-full{height:200px;}
+.empty{text-align:center;padding:36px 20px;color:var(--muted);}
+.empty-icon{font-size:36px;margin-bottom:8px;}
+.empty-text{font-size:13px;}
+.footer{position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--bg);border-top:1px solid var(--border);padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0));}
+.footer-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px;}
+.footer-title{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.05em;margin-bottom:8px;}
+.ih-bar{display:flex;align-items:center;gap:6px;padding:7px 10px;margin-bottom:8px;background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.3);border-radius:var(--rs);font-size:12px;}
+.ih-label{color:var(--muted);font-size:11px;}
+.ih-val{color:var(--accent);font-weight:700;font-size:13px;}
+.ih-src{color:var(--muted);font-size:10px;margin-left:2px;}
+.ih-reset-btn{margin-left:auto;font-size:11px;background:transparent;border:none;color:var(--muted);cursor:pointer;text-decoration:underline;}
+.f-row{display:flex;gap:8px;margin-bottom:8px;}
+.f-row .fl{flex:1;display:flex;flex-direction:column;gap:3px;}
+.f-row input{padding:10px;font-size:15px;}
+.f-actions{display:flex;gap:8px;}
+#tab-graph{padding:16px;gap:12px;}
+.overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.75);align-items:flex-end;justify-content:center;}
+.overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:20px 20px 0 0;padding:24px;width:100%;padding-bottom:calc(24px + env(safe-area-inset-bottom,0));}
+.modal-t{font-size:16px;font-weight:700;margin-bottom:4px;}
+.modal-s{font-size:13px;color:var(--muted);margin-bottom:12px;}
+.modal-val{font-size:36px;font-weight:700;color:var(--accent);text-align:center;margin:16px 0;}
+.modal-note{font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px;}
+.modal-acts{display:flex;gap:8px;}
 </style>
 </head>
-
 <body>
 
-<div class="header">
-
-<input id="place" placeholder="地点名">
-<input id="observer1" placeholder="観測者①">
-<input id="observer2" placeholder="観測者②">
-
-<div id="time"></div>
-
-<input id="bmName" placeholder="BM測点">
-<input id="initGH" type="number" step="0.001" placeholder="初期GH">
-
-<button onclick="setInit()">開始</button>
-
+<div class="hdr">
+  <div class="hdr-top">
+    <div class="app-title">📐 水準測量</div>
+    <div class="time-badge" id="time">--:--</div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('setup')">設定</button>
+    <button class="tab" onclick="switchTab('measure')">測定</button>
+    <button class="tab" onclick="switchTab('graph')">グラフ</button>
+  </div>
 </div>
 
-<table>
-<thead>
-<tr>
-<th>図</th>
-<th>測点</th>
-<th>SP</th>
-<th>IH</th>
-<th>FS</th>
-<th>GH</th>
-<th></th>
-</tr>
-</thead>
-<tbody id="table"></tbody>
-</table>
-
-<canvas id="chart"></canvas>
-
-<div class="footer">
-
-<input id="point" placeholder="測点">
-
-<div class="row">
- <input id="sp" type="number" step="0.001" placeholder="SP">
- <input id="fs" inputmode="decimal" placeholder="FS">
+<div class="sec active" id="tab-setup">
+  <div class="setup-panel">
+    <div class="card">
+      <div class="card-label">📍 現場情報</div>
+      <div class="fields">
+        <div>
+          <div class="field-lbl">地点名</div>
+          <input id="place" type="text" placeholder="例：○○地区　△△工区">
+        </div>
+        <div class="row2">
+          <div><div class="field-lbl">観測者①</div><input id="observer1" type="text" placeholder="名前"></div>
+          <div><div class="field-lbl">観測者②</div><input id="observer2" type="text" placeholder="名前"></div>
+        </div>
+        <div>
+          <div class="field-lbl">測定日時</div>
+          <input id="survey-date" type="datetime-local">
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">🔩 BM設定</div>
+      <div class="fields">
+        <div><div class="field-lbl">BM測点名</div><input id="bmName" type="text" placeholder="例：BM.1"></div>
+        <div><div class="field-lbl">初期GH（標高）</div><input id="initGH" type="number" step="0.001" placeholder="例：10.000" inputmode="decimal"></div>
+      </div>
+    </div>
+    <button class="btn btn-p" onclick="setInit()">測定開始</button>
+    <button class="btn btn-d" onclick="clearAll()">データをリセット</button>
+  </div>
 </div>
 
-<button onclick="add()">追加</button>
-<button onclick="downloadCSV()">CSV</button>
+<div class="sec" id="tab-measure">
+  <div class="tbl-wrap">
+    <div class="tbl-box">
+      <div class="empty" id="empty-state">
+        <div class="empty-icon">📋</div>
+        <div class="empty-text">設定タブからBMを登録してください</div>
+      </div>
+      <table id="data-table" style="display:none;">
+        <colgroup>
+          <col class="c-tog"><col class="c-pt"><col class="c-sp">
+          <col class="c-ih"><col class="c-fs"><col class="c-gh"><col class="c-del">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>表示</th>
+            <th style="text-align:left;padding-left:6px;">測点</th>
+            <th>SP</th><th>IH</th><th>FS</th>
+            <th>GH▼</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="graph-inline">
+    <div class="graph-box">
+      <div class="graph-title">GH プロファイル（リアルタイム）</div>
+      <canvas id="chart-inline"></canvas>
+    </div>
+  </div>
+</div>
 
+<div class="sec" id="tab-graph">
+  <div class="card">
+    <div class="graph-title">GH プロファイル</div>
+    <canvas id="chart-full"></canvas>
+  </div>
+  <button class="btn btn-s" onclick="downloadCSV()">📥 CSVダウンロード</button>
+</div>
+
+<div class="footer" id="footer" style="display:none;">
+  <div class="footer-card">
+    <div class="footer-title">データ追加</div>
+    <div class="ih-bar" id="ih-bar">
+      <span class="ih-label">IH</span>
+      <span class="ih-val" id="ih-val">--</span>
+      <span class="ih-src" id="ih-src"></span>
+      <button class="ih-reset-btn" id="ih-reset-btn" onclick="resetIH()" style="display:none;">元に戻す</button>
+    </div>
+    <div style="margin-bottom:8px;">
+      <div class="field-lbl">測点名</div>
+      <input id="point" type="text" placeholder="例：TP.1、No.5">
+    </div>
+    <div class="f-row">
+      <div class="fl">
+        <div class="field-lbl">SP（後視）</div>
+        <input id="sp" type="number" step="0.001" placeholder="0.000" inputmode="decimal">
+      </div>
+      <div class="fl">
+        <div class="field-lbl">FS（前視）</div>
+        <input id="fs" type="number" step="0.001" placeholder="0.000" inputmode="decimal">
+      </div>
+    </div>
+    <div class="f-actions">
+      <button class="btn btn-p" onclick="add()">追加</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modal" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-t">このGHをIHに変更</div>
+    <div class="modal-s">この行以降の測点のIHに適用されます</div>
+    <div class="modal-val" id="modal-val">0.000</div>
+    <div class="modal-note" id="modal-note"></div>
+    <div class="modal-acts">
+      <button class="btn btn-s" style="flex:1;" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-p" style="flex:2;" onclick="applyIH()">変更する</button>
+    </div>
+  </div>
 </div>
 
 <script>
-
 let data=[];
 let baseIH=null;
-let overrideIH=null;
+let pendingIH=null;
+let pendingIHRow=null;
 
-// 時刻
-setInterval(()=>{time.innerText="日時："+new Date().toLocaleString()},1000);
+function tick(){
+  const d=new Date();
+  document.getElementById('time').textContent=
+    String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+tick();setInterval(tick,10000);
 
-// 初期
+(function(){
+  const now=new Date();
+  const local=new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  document.getElementById('survey-date').value=local;
+})();
+
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    t.classList.toggle('active',['setup','measure','graph'][i]===name);
+  });
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.getElementById('footer').style.display=name==='measure'?'block':'none';
+  if(name==='graph') drawChart('chart-full');
+}
+
 function setInit(){
- let gh=parseFloat(initGH.value);
- if(isNaN(gh)) return;
-
- baseIH=gh;
-
- data=[{
-  point:(bmName.value||"BM")+"(BM)",
-  gh:gh,
-  use:true
- }];
- save();
+  const gh=parseFloat(document.getElementById('initGH').value);
+  if(isNaN(gh)){alert('初期GHを入力してください');return;}
+  baseIH=gh;
+  const nm=document.getElementById('bmName').value||'BM';
+  data=[{point:nm,isBM:true,gh,use:true,ihOverride:null}];
+  save();
+  switchTab('measure');
 }
 
-// 追加
+/* 行indexに到達するまでの有効IH */
+function getIHAt(idx){
+  let ih=baseIH;
+  for(let i=0;i<idx;i++){
+    if(data[i].ihOverride!==null&&data[i].ihOverride!==undefined) ih=data[i].ihOverride;
+  }
+  return ih;
+}
+function getCurrentIH(){return getIHAt(data.length);}
+
 function add(){
- let p=point.value;
- let spV=parseFloat(sp.value);
- let fsV=parseFloat(fs.value);
-
- if(!p) return;
-
- let ih = overrideIH!==null ? overrideIH : baseIH;
-
- let gh="";
- if(!isNaN(fsV)){
-  gh = Number(ih) + Number(fsV); // ✅ 修正
- }
-
- data.push({
-  use:true,
-  point:p,
-  sp:isNaN(spV)?"":spV,
-  ih:ih,
-  fs:isNaN(fsV)?"":fsV,
-  gh:gh
- });
-
- point.value=""; sp.value=""; fs.value="";
- save();
+  const p=document.getElementById('point').value.trim();
+  const spV=parseFloat(document.getElementById('sp').value);
+  const fsV=parseFloat(document.getElementById('fs').value);
+  if(!p){alert('測点名を入力してください');return;}
+  if(baseIH===null){alert('まず設定タブからBMを登録してください');return;}
+  const ih=getCurrentIH();
+  let gh='';
+  if(!isNaN(fsV)) gh=Number((Number(ih)+Number(fsV)).toFixed(3));
+  data.push({use:true,point:p,sp:isNaN(spV)?'':spV,ih,fs:isNaN(fsV)?'':fsV,gh,ihOverride:null});
+  document.getElementById('point').value='';
+  document.getElementById('sp').value='';
+  document.getElementById('fs').value='';
+  save();
 }
 
-// GHタップ
-function copyGH(v){
- if(isNaN(v)) return;
- overrideIH=v;
- alert("IH変更："+v);
+function tapGH(rowIdx){
+  const d=data[rowIdx];
+  if(d.gh===''||isNaN(d.gh)) return;
+  pendingIHRow=rowIdx;
+  pendingIH=d.gh;
+  document.getElementById('modal-val').textContent=Number(d.gh).toFixed(3);
+  const next=rowIdx+1;
+  const remain=data.length-next;
+  document.getElementById('modal-note').textContent=
+    remain>0?`${next+1}行目以降（計${remain}行）のIHを更新します`:'この行の次の測点から適用されます';
+  document.getElementById('modal').classList.add('open');
+}
+function closeModalOutside(e){if(e.target===document.getElementById('modal'))closeModal();}
+function closeModal(){document.getElementById('modal').classList.remove('open');}
+
+function applyIH(){
+  if(pendingIHRow===null) return;
+  data[pendingIHRow].ihOverride=pendingIH;
+  recalcFrom(pendingIHRow+1);
+  closeModal();
+  save();
 }
 
-// ON/OFF
-function toggle(i){
- data[i].use=!data[i].use;
- save();
+function resetIH(){
+  data.forEach(d=>d.ihOverride=null);
+  recalcAll();
+  save();
+  updateIHBar();
 }
 
-// 削除
+function recalcFrom(startIdx){
+  for(let i=startIdx;i<data.length;i++){
+    const ih=getIHAt(i);
+    data[i].ih=ih;
+    if(data[i].fs!=='') data[i].gh=Number((Number(ih)+Number(data[i].fs)).toFixed(3));
+  }
+}
+function recalcAll(){recalcFrom(1);}
+
+function toggle(i){data[i].use=!data[i].use;save();}
+
 function del(i){
- data.splice(i,1);
- save();
+  if(confirm('「'+data[i].point+'」を削除しますか？')){
+    data.splice(i,1);
+    recalcAll();
+    save();
+  }
 }
 
 function save(){
- localStorage.setItem("level",JSON.stringify(data));
- render();
+  try{
+    localStorage.setItem('lvl3',JSON.stringify({
+      data,baseIH,
+      place:document.getElementById('place').value,
+      ob1:document.getElementById('observer1').value,
+      ob2:document.getElementById('observer2').value,
+      surveyDate:document.getElementById('survey-date').value
+    }));
+  }catch(e){}
+  render();
 }
 
-// 色判定
-function colorClass(v){
- if(v > 0) return "plus";
- if(v < 0) return "minus";
- return "";
+function updateIHBar(){
+  const ih=getCurrentIH();
+  document.getElementById('ih-val').textContent=ih!==null?Number(ih).toFixed(3):'--';
+  const hasOverride=data.some(d=>d.ihOverride!==null&&d.ihOverride!==undefined);
+  document.getElementById('ih-src').textContent=hasOverride?'（GHより）':'（BM）';
+  document.getElementById('ih-reset-btn').style.display=hasOverride?'inline':'none';
 }
 
-// 表示
+function fmtN(v){return Number(v).toFixed(3);}
+function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
 function render(){
- table.innerHTML="";
-
- data.forEach((d,i)=>{
-  let tr=document.createElement("tr");
-
-  let fsClass=colorClass(d.fs);
-  let ghClass=colorClass(d.fs); // FSに合わせる
-
-  tr.innerHTML=`
-  <td><span class="toggle" onclick="toggle(${i})">${d.use?"ON":"OFF"}</span></td>
-
-  <td>${d.point}</td>
-  <td>${d.sp!==""?Number(d.sp).toFixed(3):"0.000"}</td>
-  <td>${Number(d.ih||0).toFixed(3)}</td>
-
-  <td class="${fsClass}">
-    ${d.fs!==""?Number(d.fs).toFixed(3):"0.000"}
-  </td>
-
-  <td class="${ghClass}" onclick="copyGH(${d.gh})">
-    ${d.gh!==""&&!isNaN(d.gh)?Number(d.gh).toFixed(3):"0.000"}
-  </td>
-
-  <td><button class="smallBtn" onclick="del(${i})">×</button></td>
-  `;
-
-  table.appendChild(tr);
- });
-
- draw();
+  updateIHBar();
+  const empty=document.getElementById('empty-state');
+  const tbl=document.getElementById('data-table');
+  const tbody=document.getElementById('tbody');
+  if(!data.length){empty.style.display='block';tbl.style.display='none';drawChart('chart-inline');return;}
+  empty.style.display='none';tbl.style.display='table';
+  tbody.innerHTML='';
+  data.forEach((d,i)=>{
+    const tr=document.createElement('tr');
+    if(!d.use) tr.classList.add('off');
+    const fsNum=parseFloat(d.fs);
+    const fsClass=!isNaN(fsNum)?(fsNum>0?'fs-plus':fsNum<0?'fs-minus':''):'';
+    const ihChanged=d.ihOverride!==null&&d.ihOverride!==undefined;
+    tr.innerHTML=
+      `<td><button class="tog-btn ${d.use?'on':''}" onclick="toggle(${i})">${d.use?'ON':'OFF'}</button></td>`+
+      `<td class="td-pt">${escH(d.point)}${d.isBM?'<span class="bm-badge">BM</span>':''}</td>`+
+      `<td>${d.sp!==''?fmtN(d.sp):'—'}</td>`+
+      `<td class="${ihChanged?'ih-changed':''}">${d.ih!==undefined?fmtN(d.ih):'—'}</td>`+
+      `<td class="${fsClass}">${d.fs!==''?fmtN(d.fs):'—'}</td>`+
+      `<td class="gh-tap" onclick="tapGH(${i})">${d.gh!==''&&!isNaN(d.gh)?fmtN(d.gh):'—'}</td>`+
+      `<td><button class="del-btn" onclick="del(${i})">×</button></td>`;
+    tbody.appendChild(tr);
+  });
+  drawChart('chart-inline');
 }
 
-// グラフ
-function draw(){
- let ctx=chart.getContext("2d");
- ctx.clearRect(0,0,300,200);
-
- let arr=data.filter(d=>d.use && d.gh!=="");
- if(arr.length<2) return;
-
- let vals=arr.map(d=>d.gh);
- let min=Math.min(...vals);
- let max=Math.max(...vals);
-
- arr.forEach((d,i)=>{
-  let x=i*(300/arr.length);
-  let y=200-((d.gh-min)/(max-min))*180;
-
-  ctx.fillStyle="#0af";
-  ctx.fillRect(x,y,4,4);
-
-  if(i>0){
-   let p=arr[i-1];
-   let px=(i-1)*(300/arr.length);
-   let py=200-((p.gh-min)/(max-min))*180;
-
-   ctx.beginPath();
-   ctx.moveTo(px,py);
-   ctx.lineTo(x,y);
-   ctx.strokeStyle="#0af";
-   ctx.stroke();
+function drawChart(canvasId){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas) return;
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.clientWidth*dpr||300;
+  const H=canvas.clientHeight*dpr||150;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  const arr=data.filter(d=>d.use&&d.gh!==''&&!isNaN(d.gh));
+  if(arr.length<2){
+    ctx.fillStyle='#7070a0';
+    ctx.font=`${12*dpr}px -apple-system`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('データが2点以上必要です',W/2,H/2);
+    return;
   }
- });
+  const vals=arr.map(d=>Number(d.gh));
+  const minV=Math.min(...vals),maxV=Math.max(...vals);
+  const range=maxV-minV||0.001;
+  const padL=52*dpr,padR=10*dpr,padT=10*dpr,padB=24*dpr;
+  const gW=W-padL-padR,gH=H-padT-padB;
+  ctx.strokeStyle='rgba(42,42,58,1)';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=padT+gH*(i/4);
+    ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(W-padR,y);ctx.stroke();
+  }
+  ctx.beginPath();
+  arr.forEach((d,i)=>{
+    const x=padL+i*(gW/(arr.length-1));
+    const y=padT+gH*(1-(Number(d.gh)-minV)/range);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle='#4f8ef7';ctx.lineWidth=2*dpr;ctx.lineJoin='round';ctx.stroke();
+  arr.forEach((d,i)=>{
+    const x=padL+i*(gW/(arr.length-1));
+    const y=padT+gH*(1-(Number(d.gh)-minV)/range);
+    ctx.beginPath();ctx.arc(x,y,4*dpr,0,Math.PI*2);ctx.fillStyle='#4f8ef7';ctx.fill();
+    ctx.beginPath();ctx.arc(x,y,2*dpr,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+  });
+  ctx.fillStyle='#7070a0';
+  ctx.font=`${9*dpr}px -apple-system`;
+  ctx.textAlign='right';ctx.textBaseline='middle';
+  for(let i=0;i<=4;i++){
+    const v=minV+range*(1-i/4);
+    const y=padT+gH*(i/4);
+    ctx.fillText(v.toFixed(3),padL-4,y);
+  }
+  ctx.font=`${8*dpr}px -apple-system`;
+  ctx.textAlign='center';ctx.textBaseline='top';
+  const step=Math.max(1,Math.ceil(arr.length/5));
+  arr.forEach((d,i)=>{
+    if(i%step!==0&&i!==arr.length-1) return;
+    const x=padL+i*(gW/(arr.length-1));
+    const label=d.point.length>5?d.point.slice(0,5)+'…':d.point;
+    ctx.fillStyle='#7070a0';
+    ctx.fillText(label,x,padT+gH+4);
+  });
 }
 
-// CSV
 function downloadCSV(){
- let csv=`地点名,${place.value}
-観測者1,${observer1.value}
-観測者2,${observer2.value}\n\n`;
-
- csv+="測点,SP,IH,FS,GH\n";
-
- data.forEach(d=>{
-  csv+=`${d.point},${d.sp||0},${d.ih||0},${d.fs||0},${d.gh||0}\n`;
- });
-
- let blob=new Blob([csv]);
- let a=document.createElement("a");
- a.href=URL.createObjectURL(blob);
- a.download="level.csv";
- a.click();
+  const place=document.getElementById('place').value;
+  const ob1=document.getElementById('observer1').value;
+  const ob2=document.getElementById('observer2').value;
+  const dt=document.getElementById('survey-date').value;
+  let csv=`地点名,${place}\n観測者①,${ob1}\n観測者②,${ob2}\n測定日時,${dt}\n\n`;
+  csv+='測点,SP,IH,FS,GH\n';
+  data.forEach(d=>{
+    csv+=`${d.point},${d.sp!==''?d.sp:''},${d.ih!==undefined?d.ih:''},${d.fs!==''?d.fs:''},${d.gh!==''?d.gh:''}\n`;
+  });
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='level_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
 }
 
-// 初期読込
-let saved=localStorage.getItem("level");
-if(saved){
- data=JSON.parse(saved);
- baseIH=data[0]?.gh||null;
+function clearAll(){
+  if(confirm('全測定データをリセットしますか？\n（設定情報は残ります）')){
+    data=[];baseIH=null;
+    try{localStorage.removeItem('lvl3');}catch(e){}
+    render();
+  }
 }
+
+try{
+  const s=localStorage.getItem('lvl3');
+  if(s){
+    const o=JSON.parse(s);
+    data=o.data||[];baseIH=o.baseIH||null;
+    if(o.place) document.getElementById('place').value=o.place;
+    if(o.ob1) document.getElementById('observer1').value=o.ob1;
+    if(o.ob2) document.getElementById('observer2').value=o.ob2;
+    if(o.surveyDate) document.getElementById('survey-date').value=o.surveyDate;
+  }
+}catch(e){}
 render();
-
 </script>
-
 </body>
 </html>
