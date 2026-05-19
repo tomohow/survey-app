@@ -201,7 +201,7 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
       <div class="card-lbl">🔩 BM設定</div>
       <div class="fields">
         <div><div class="flbl">BM測点名</div><input id="bmName" type="text" placeholder="例：BM.1"></div>
-        <div><div class="flbl">初期GH（標高）</div><input id="initGH" type="number" step="0.001" placeholder="例：10.000" inputmode="decimal"></div>
+        <div><div class="flbl">初期GH（標高）</div><input id="initGH" type="text" inputmode="decimal" placeholder="例：10.000" autocomplete="off" autocorrect="off" spellcheck="false"></div>
       </div>
     </div>
     <button class="btn btn-p" onclick="setInit()">測定開始</button>
@@ -262,11 +262,11 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
         </div>
         <div class="fi">
           <div class="flbl">SP</div>
-          <input id="sp" type="number" step="0.001" placeholder="0.000" inputmode="decimal">
+          <input id="sp" type="text" inputmode="decimal" placeholder="0.000" autocomplete="off" autocorrect="off" spellcheck="false">
         </div>
         <div class="fi">
           <div class="flbl">FS</div>
-          <input id="fs" type="number" step="0.001" placeholder="0.000" inputmode="decimal">
+          <input id="fs" type="text" inputmode="decimal" placeholder="0.000" autocomplete="off" autocorrect="off" spellcheck="false">
         </div>
         <button class="add-btn" onclick="add()">追加</button>
       </div>
@@ -353,12 +353,17 @@ function getIHAt(idx){
 }
 function curIH(){return getIHAt(data.length);}
 
+/* ── 自動採番（BM行を除いたカウント） ── */
+function nextNo(){return data.filter(d=>!d.isBM).length+1;}
+
 /* ── 追加 ── */
 function add(){
-  const p=document.getElementById('point').value.trim();
-  const sp=parseFloat(document.getElementById('sp').value);
-  const fs=parseFloat(document.getElementById('fs').value);
-  if(!p){alert('測点名を入力してください');return;}
+  const raw=document.getElementById('point').value.trim();
+  const p=raw||String(nextNo());          // 空なら連番
+  const spRaw=document.getElementById('sp').value.trim();
+  const fsRaw=document.getElementById('fs').value.trim();
+  const sp=parseFloat(spRaw);
+  const fs=parseFloat(fsRaw);
   if(baseIH===null){alert('設定タブからBMを登録してください');return;}
   const ih=curIH();
   const gh=isNaN(fs)?'':Number((ih+fs).toFixed(3));
