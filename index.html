@@ -201,7 +201,7 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
       <div class="card-lbl">🔩 BM設定</div>
       <div class="fields">
         <div><div class="flbl">BM測点名</div><input id="bmName" type="text" placeholder="例：BM.1"></div>
-        <div><div class="flbl">初期GH（標高）</div><input id="initGH" type="text" inputmode="text" pattern="-?[0-9]*\.?[0-9]*" placeholder="例：10.000" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"></div>
+        <div><div class="flbl">初期GH（標高）</div><input id="initGH" type="text" inputmode="url" pattern="-?[0-9]*\.?[0-9]*" placeholder="例：10.000" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"></div>
       </div>
     </div>
     <button class="btn btn-p" onclick="setInit()">測定開始</button>
@@ -258,15 +258,15 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
       <div class="inp-row">
         <div class="fi fi-lg">
           <div class="flbl">測点名</div>
-          <input id="point" type="text" placeholder="TP.1 / No.5">
+          <input id="point" type="text" inputmode="url" placeholder="TP.1 / No.5" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
         </div>
         <div class="fi">
           <div class="flbl">SP</div>
-          <input id="sp" type="text" inputmode="text" pattern="-?[0-9]*\.?[0-9]*" placeholder="0.000" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+          <input id="sp" type="text" inputmode="url" pattern="-?[0-9]*\.?[0-9]*" placeholder="0.000" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
         </div>
         <div class="fi">
           <div class="flbl">FS</div>
-          <input id="fs" type="text" inputmode="text" pattern="-?[0-9]*\.?[0-9]*" placeholder="0.000" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+          <input id="fs" type="text" inputmode="url" pattern="-?[0-9]*\.?[0-9]*" placeholder="0.000" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
         </div>
         <button class="add-btn" onclick="add()">追加</button>
       </div>
@@ -654,6 +654,50 @@ function loadAndRender(){
 
 /* IDB open後に読み込む（openが非同期のため少し待つ） */
 setTimeout(loadAndRender, 80);
+
+/* ── オフライン対応：Service Worker を動的生成・登録 ── */
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  /* SW スクリプトを文字列で定義してBlobURLに変換 */
+  const CACHE='level-survey-v1';
+  const swCode=`
+const CACHE='${CACHE}';
+self.addEventListener('install',e=>{
+  e.waitUntil(
+    caches.open(CACHE).then(c=>c.addAll([location.href.replace(/\\/[^/]*$/,'/')||'/']))
+      .catch(()=>{})
+  );
+  self.skipWaiting();
+});
+self.addEventListener('activate',e=>{
+  e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));
+  self.clients.claim();
+});
+self.addEventListener('fetch',e=>{
+  if(e.request.method!=='GET') return;
+  e.respondWith(
+    caches.match(e.request).then(cached=>{
+      const net=fetch(e.request).then(res=>{
+        if(res&&res.status===200){
+          const clone=res.clone();
+          caches.open(CACHE).then(c=>c.put(e.request,clone));
+        }
+        return res;
+      }).catch(()=>null);
+      return cached||net;
+    })
+  );
+});
+`;
+  const blob=new Blob([swCode],{type:'application/javascript'});
+  const url=URL.createObjectURL(blob);
+  navigator.serviceWorker.register(url,{scope:'./'})
+    .then(()=>{
+      /* 初回登録時：このページ自身をキャッシュに追加 */
+      return caches.open(CACHE).then(c=>c.add(location.href));
+    })
+    .catch(()=>{});
+})();
 </script>
 </body>
 </html>
