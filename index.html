@@ -7,96 +7,169 @@
 <style>
 :root{
   --bg:#0a0a0f;
-  --surface:#13131a;
-  --surface2:#1c1c27;
-  --border:#2a2a3a;
-  --accent:#4f8ef7;
-  --plus:#34d399;
-  --minus:#f87171;
-  --text:#f0f0f8;
-  --muted:#7070a0;
-  --r:14px;
+  --sf:#13131a;
+  --sf2:#1c1c27;
+  --bd:#2a2a3a;
+  --ac:#4f8ef7;
+  --pl:#34d399;
+  --mn:#f87171;
+  --tx:#f0f0f8;
+  --mu:#7070a0;
+  --r:12px;
   --rs:8px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;min-height:100vh;}
-.hdr{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--border);padding:env(safe-area-inset-top,0) 16px 0;}
-.hdr-top{display:flex;align-items:center;justify-content:space-between;padding:12px 0 8px;}
-.app-title{font-size:17px;font-weight:700;}
-.time-badge{font-size:11px;color:var(--muted);background:var(--surface);padding:4px 10px;border-radius:20px;border:1px solid var(--border);}
-.tabs{display:flex;gap:4px;padding:8px 0;}
-.tab{flex:1;padding:9px 4px;font-size:13px;font-weight:600;border:none;border-radius:var(--rs);cursor:pointer;color:var(--muted);background:transparent;transition:all .2s;}
-.tab.active{background:var(--accent);color:#fff;}
-.sec{display:none;}
+html,body{height:100%;overflow:hidden;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN',sans-serif;
+  background:var(--bg);color:var(--tx);
+  display:flex;flex-direction:column;
+}
+
+/* ヘッダー固定 */
+.hdr{
+  flex:0 0 auto;
+  background:var(--bg);border-bottom:1px solid var(--bd);
+  padding:env(safe-area-inset-top,0) 16px 0;
+}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;padding:10px 0 6px;}
+.app-title{font-size:16px;font-weight:700;}
+.time-badge{font-size:11px;color:var(--mu);background:var(--sf);padding:3px 9px;border-radius:16px;border:1px solid var(--bd);}
+.tabs{display:flex;gap:4px;padding:6px 0;}
+.tab{flex:1;padding:8px 4px;font-size:13px;font-weight:600;border:none;border-radius:var(--rs);cursor:pointer;color:var(--mu);background:transparent;}
+.tab.active{background:var(--ac);color:#fff;}
+
+/* コンテンツ全体 */
+.sec{display:none;flex:1 1 auto;overflow:hidden;}
 .sec.active{display:flex;flex-direction:column;}
-.setup-panel{padding:16px;display:flex;flex-direction:column;gap:12px;}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;}
-.card-label{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.06em;margin-bottom:10px;}
-.fields{display:flex;flex-direction:column;gap:8px;}
-.field-lbl{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.04em;margin-bottom:3px;}
+
+/* ── 設定タブ ── */
+.setup-scroll{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:10px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0));}
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:14px;}
+.card-lbl{font-size:10px;color:var(--mu);font-weight:700;letter-spacing:.06em;margin-bottom:8px;}
+.fields{display:flex;flex-direction:column;gap:7px;}
+.flbl{font-size:10px;color:var(--mu);font-weight:600;letter-spacing:.04em;margin-bottom:2px;}
 .row2{display:flex;gap:8px;}
 .row2>*{flex:1;}
-input[type=text],input[type=number],input[type=datetime-local]{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:16px;padding:12px 14px;border-radius:var(--rs);outline:none;transition:border-color .2s;-webkit-appearance:none;}
-input:focus{border-color:var(--accent);}
-input::placeholder{color:var(--muted);}
+input[type=text],input[type=number],input[type=datetime-local]{
+  width:100%;background:var(--sf2);border:1px solid var(--bd);
+  color:var(--tx);font-size:15px;padding:10px 12px;
+  border-radius:var(--rs);outline:none;-webkit-appearance:none;
+}
+input:focus{border-color:var(--ac);}
+input::placeholder{color:var(--mu);}
 input[type=datetime-local]{color-scheme:dark;}
-.btn{width:100%;padding:14px;font-size:16px;font-weight:700;border:none;border-radius:var(--r);cursor:pointer;transition:transform .1s;-webkit-appearance:none;}
-.btn:active{transform:scale(.97);}
-.btn-p{background:var(--accent);color:#fff;}
-.btn-s{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
-.btn-d{background:rgba(248,113,113,.12);color:var(--minus);border:1px solid rgba(248,113,113,.25);}
-#tab-measure{overflow-y:auto;padding-bottom:220px;}
-.tbl-wrap{padding:12px 16px 0;}
-.tbl-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
-table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;}
-col.c-tog{width:38px;}col.c-pt{width:auto;}col.c-sp{width:50px;}col.c-ih{width:50px;}col.c-fs{width:50px;}col.c-gh{width:58px;}col.c-del{width:34px;}
-thead th{background:var(--surface2);padding:9px 3px;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.04em;text-align:center;border-bottom:1px solid var(--border);}
-tbody tr{border-bottom:1px solid rgba(42,42,58,.7);}
+.btn{width:100%;padding:13px;font-size:15px;font-weight:700;border:none;border-radius:var(--r);cursor:pointer;-webkit-appearance:none;}
+.btn:active{opacity:.75;}
+.btn-p{background:var(--ac);color:#fff;}
+.btn-s{background:var(--sf2);color:var(--tx);border:1px solid var(--bd);}
+.btn-d{background:rgba(248,113,113,.12);color:var(--mn);border:1px solid rgba(248,113,113,.25);}
+
+/* ── 測定タブ ── */
+#tab-measure{flex-direction:column;}
+
+/* テーブル領域 */
+.tbl-area{
+  flex:1 1 auto;
+  overflow-y:auto;
+  padding:10px 16px 6px;
+}
+.tbl-box{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;}
+table{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;}
+col.c-tog{width:36px;}
+col.c-pt{width:auto;}
+col.c-sp{width:46px;}
+col.c-ih{width:46px;}
+col.c-fs{width:46px;}
+col.c-gh{width:54px;}
+col.c-del{width:30px;}
+thead th{
+  background:var(--sf2);padding:7px 2px;
+  font-size:9px;font-weight:700;color:var(--mu);letter-spacing:.04em;
+  text-align:center;border-bottom:1px solid var(--bd);
+  position:sticky;top:0;z-index:2;
+}
+tbody tr{border-bottom:1px solid rgba(42,42,58,.8);}
 tbody tr:last-child{border-bottom:none;}
-tbody tr.off{opacity:.3;}
-td{padding:9px 3px;text-align:center;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.td-pt{text-align:left;padding-left:6px;font-weight:600;font-size:12px;}
-.bm-badge{font-size:8px;background:rgba(79,142,247,.2);color:var(--accent);padding:1px 5px;border-radius:8px;border:1px solid rgba(79,142,247,.4);display:inline-block;margin-left:3px;vertical-align:middle;}
-.fs-plus{color:var(--plus);font-weight:600;}
-.fs-minus{color:var(--minus);font-weight:600;}
+tbody tr.off{opacity:.28;}
+td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.td-pt{text-align:left;padding-left:6px;font-weight:600;font-size:11px;}
+.bm-badge{font-size:8px;background:rgba(79,142,247,.2);color:var(--ac);padding:1px 4px;border-radius:6px;border:1px solid rgba(79,142,247,.4);margin-left:2px;vertical-align:middle;}
+.fs-plus{color:var(--pl);font-weight:600;}
+.fs-minus{color:var(--mn);font-weight:600;}
 .gh-tap{cursor:pointer;text-decoration:underline dotted rgba(112,112,160,.5);}
-.ih-changed{color:var(--accent);font-weight:700;}
-.tog-btn{font-size:9px;padding:3px 4px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;line-height:1.2;}
-.tog-btn.on{border-color:var(--plus);color:var(--plus);}
-.del-btn{background:transparent;border:1px solid rgba(248,113,113,.3);color:var(--minus);font-size:13px;font-weight:700;cursor:pointer;border-radius:5px;padding:3px 6px;line-height:1;}
-.graph-inline{padding:12px 16px 0;}
-.graph-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px;}
-.graph-title{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.05em;margin-bottom:8px;}
-canvas{width:100%;display:block;}
-#chart-inline{height:150px;}
-#chart-full{height:200px;}
-.empty{text-align:center;padding:36px 20px;color:var(--muted);}
-.empty-icon{font-size:36px;margin-bottom:8px;}
-.empty-text{font-size:13px;}
-.footer{position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--bg);border-top:1px solid var(--border);padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0));}
-.footer-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px;}
-.footer-title{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.05em;margin-bottom:8px;}
-.ih-bar{display:flex;align-items:center;gap:6px;padding:7px 10px;margin-bottom:8px;background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.3);border-radius:var(--rs);font-size:12px;}
-.ih-label{color:var(--muted);font-size:11px;}
-.ih-val{color:var(--accent);font-weight:700;font-size:13px;}
-.ih-src{color:var(--muted);font-size:10px;margin-left:2px;}
-.ih-reset-btn{margin-left:auto;font-size:11px;background:transparent;border:none;color:var(--muted);cursor:pointer;text-decoration:underline;}
-.f-row{display:flex;gap:8px;margin-bottom:8px;}
-.f-row .fl{flex:1;display:flex;flex-direction:column;gap:3px;}
-.f-row input{padding:10px;font-size:15px;}
-.f-actions{display:flex;gap:8px;}
-#tab-graph{padding:16px;gap:12px;}
-.overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.75);align-items:flex-end;justify-content:center;}
+.ih-chg{color:var(--ac);font-weight:700;}
+.tog-btn{font-size:8px;padding:2px 3px;border-radius:4px;border:1px solid var(--bd);background:transparent;color:var(--mu);cursor:pointer;line-height:1.3;}
+.tog-btn.on{border-color:var(--pl);color:var(--pl);}
+.del-btn{background:transparent;border:1px solid rgba(248,113,113,.25);color:var(--mn);font-size:12px;font-weight:700;cursor:pointer;border-radius:4px;padding:2px 5px;line-height:1;}
+
+/* グラフ固定帯 */
+.graph-strip{
+  flex:0 0 auto;
+  padding:0 16px 6px;
+}
+.graph-box{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:8px 10px;}
+.graph-lbl{font-size:9px;color:var(--mu);font-weight:700;letter-spacing:.05em;margin-bottom:4px;}
+#chart-inline{width:100%;height:80px;display:block;}
+
+/* フッター入力 */
+.footer{
+  flex:0 0 auto;
+  background:var(--bg);border-top:1px solid var(--bd);
+  padding:8px 16px;
+  padding-bottom:calc(8px + env(safe-area-inset-bottom,0));
+}
+.footer-inner{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:10px;}
+.ih-bar{
+  display:flex;align-items:center;gap:5px;
+  padding:5px 8px;margin-bottom:7px;
+  background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.3);
+  border-radius:var(--rs);font-size:11px;
+}
+.ih-lbl{color:var(--mu);font-size:10px;}
+.ih-val{color:var(--ac);font-weight:700;font-size:12px;}
+.ih-src{color:var(--mu);font-size:9px;}
+.ih-rst{margin-left:auto;font-size:10px;background:transparent;border:none;color:var(--mu);cursor:pointer;text-decoration:underline;}
+.inp-row{display:flex;gap:6px;margin-bottom:7px;align-items:flex-end;}
+.inp-row .fi{flex:1;display:flex;flex-direction:column;gap:2px;}
+.inp-row .fi-lg{flex:1.5;}
+.inp-row input{padding:8px 8px;font-size:14px;}
+.add-btn{flex:0 0 auto;padding:8px 16px;font-size:14px;font-weight:700;
+  background:var(--ac);color:#fff;border:none;border-radius:var(--rs);cursor:pointer;}
+.add-btn:active{opacity:.75;}
+
+/* グラフタブ */
+.graph-scroll{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:10px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0));}
+#chart-full{width:100%;height:200px;display:block;}
+
+/* 空状態 */
+.empty{text-align:center;padding:28px 16px;color:var(--mu);}
+.empty-ico{font-size:30px;margin-bottom:6px;}
+.empty-txt{font-size:12px;}
+
+/* モーダル */
+.overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.78);align-items:flex-end;}
 .overlay.open{display:flex;}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:20px 20px 0 0;padding:24px;width:100%;padding-bottom:calc(24px + env(safe-area-inset-bottom,0));}
-.modal-t{font-size:16px;font-weight:700;margin-bottom:4px;}
-.modal-s{font-size:13px;color:var(--muted);margin-bottom:12px;}
-.modal-val{font-size:36px;font-weight:700;color:var(--accent);text-align:center;margin:16px 0;}
-.modal-note{font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px;}
-.modal-acts{display:flex;gap:8px;}
+.modal{background:var(--sf);border:1px solid var(--bd);border-radius:20px 20px 0 0;padding:22px 20px;width:100%;padding-bottom:calc(22px + env(safe-area-inset-bottom,0));}
+.modal-t{font-size:15px;font-weight:700;margin-bottom:3px;}
+.modal-s{font-size:12px;color:var(--mu);margin-bottom:10px;}
+.modal-v{font-size:34px;font-weight:700;color:var(--ac);text-align:center;margin:12px 0;}
+.modal-n{font-size:11px;color:var(--mu);text-align:center;margin-bottom:14px;}
+.modal-a{display:flex;gap:8px;}
+
+/* オフラインバナー */
+.offline-banner{
+  display:none;
+  background:rgba(248,113,113,.15);border-bottom:1px solid rgba(248,113,113,.3);
+  color:var(--mn);font-size:11px;text-align:center;padding:4px;
+}
+.offline-banner.show{display:block;}
 </style>
 </head>
 <body>
+
+<!-- オフライン通知 -->
+<div class="offline-banner" id="offline-banner">⚠️ オフライン — データはローカルに保存されています</div>
 
 <div class="hdr">
   <div class="hdr-top">
@@ -110,113 +183,116 @@ canvas{width:100%;display:block;}
   </div>
 </div>
 
+<!-- 設定 -->
 <div class="sec active" id="tab-setup">
-  <div class="setup-panel">
+  <div class="setup-scroll">
     <div class="card">
-      <div class="card-label">📍 現場情報</div>
+      <div class="card-lbl">📍 現場情報</div>
       <div class="fields">
-        <div>
-          <div class="field-lbl">地点名</div>
-          <input id="place" type="text" placeholder="例：○○地区　△△工区">
-        </div>
+        <div><div class="flbl">地点名</div><input id="place" type="text" placeholder="例：○○地区 △△工区"></div>
         <div class="row2">
-          <div><div class="field-lbl">観測者①</div><input id="observer1" type="text" placeholder="名前"></div>
-          <div><div class="field-lbl">観測者②</div><input id="observer2" type="text" placeholder="名前"></div>
+          <div><div class="flbl">観測者①</div><input id="observer1" type="text" placeholder="名前"></div>
+          <div><div class="flbl">観測者②</div><input id="observer2" type="text" placeholder="名前"></div>
         </div>
-        <div>
-          <div class="field-lbl">測定日時</div>
-          <input id="survey-date" type="datetime-local">
-        </div>
+        <div><div class="flbl">測定日時</div><input id="survey-date" type="datetime-local"></div>
       </div>
     </div>
     <div class="card">
-      <div class="card-label">🔩 BM設定</div>
+      <div class="card-lbl">🔩 BM設定</div>
       <div class="fields">
-        <div><div class="field-lbl">BM測点名</div><input id="bmName" type="text" placeholder="例：BM.1"></div>
-        <div><div class="field-lbl">初期GH（標高）</div><input id="initGH" type="number" step="0.001" placeholder="例：10.000" inputmode="decimal"></div>
+        <div><div class="flbl">BM測点名</div><input id="bmName" type="text" placeholder="例：BM.1"></div>
+        <div><div class="flbl">初期GH（標高）</div><input id="initGH" type="number" step="0.001" placeholder="例：10.000" inputmode="decimal"></div>
       </div>
     </div>
     <button class="btn btn-p" onclick="setInit()">測定開始</button>
+    <button class="btn btn-s" onclick="downloadCSV()">📥 CSVダウンロード</button>
     <button class="btn btn-d" onclick="clearAll()">データをリセット</button>
   </div>
 </div>
 
+<!-- 測定 -->
 <div class="sec" id="tab-measure">
-  <div class="tbl-wrap">
+
+  <!-- テーブル（スクロール） -->
+  <div class="tbl-area">
     <div class="tbl-box">
       <div class="empty" id="empty-state">
-        <div class="empty-icon">📋</div>
-        <div class="empty-text">設定タブからBMを登録してください</div>
+        <div class="empty-ico">📋</div>
+        <div class="empty-txt">設定タブからBMを登録してください</div>
       </div>
       <table id="data-table" style="display:none;">
         <colgroup>
-          <col class="c-tog"><col class="c-pt"><col class="c-sp">
-          <col class="c-ih"><col class="c-fs"><col class="c-gh"><col class="c-del">
+          <col class="c-tog"><col class="c-pt">
+          <col class="c-sp"><col class="c-ih"><col class="c-fs"><col class="c-gh">
+          <col class="c-del">
         </colgroup>
         <thead>
           <tr>
             <th>表示</th>
             <th style="text-align:left;padding-left:6px;">測点</th>
-            <th>SP</th><th>IH</th><th>FS</th>
-            <th>GH▼</th><th></th>
+            <th>SP</th><th>IH</th><th>FS</th><th>GH▼</th><th></th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
       </table>
     </div>
   </div>
-  <div class="graph-inline">
+
+  <!-- グラフ固定帯 -->
+  <div class="graph-strip">
     <div class="graph-box">
-      <div class="graph-title">GH プロファイル（リアルタイム）</div>
+      <div class="graph-lbl">GH プロファイル</div>
       <canvas id="chart-inline"></canvas>
     </div>
   </div>
+
+  <!-- 入力フッター -->
+  <div class="footer">
+    <div class="footer-inner">
+      <div class="ih-bar">
+        <span class="ih-lbl">IH</span>
+        <span class="ih-val" id="ih-val">--</span>
+        <span class="ih-src" id="ih-src"></span>
+        <button class="ih-rst" id="ih-rst" onclick="resetIH()" style="display:none;">元に戻す</button>
+      </div>
+      <div class="inp-row">
+        <div class="fi fi-lg">
+          <div class="flbl">測点名</div>
+          <input id="point" type="text" placeholder="TP.1 / No.5">
+        </div>
+        <div class="fi">
+          <div class="flbl">SP</div>
+          <input id="sp" type="number" step="0.001" placeholder="0.000" inputmode="decimal">
+        </div>
+        <div class="fi">
+          <div class="flbl">FS</div>
+          <input id="fs" type="number" step="0.001" placeholder="0.000" inputmode="decimal">
+        </div>
+        <button class="add-btn" onclick="add()">追加</button>
+      </div>
+    </div>
+  </div>
 </div>
 
+<!-- グラフ -->
 <div class="sec" id="tab-graph">
-  <div class="card">
-    <div class="graph-title">GH プロファイル</div>
-    <canvas id="chart-full"></canvas>
-  </div>
-  <button class="btn btn-s" onclick="downloadCSV()">📥 CSVダウンロード</button>
-</div>
-
-<div class="footer" id="footer" style="display:none;">
-  <div class="footer-card">
-    <div class="footer-title">データ追加</div>
-    <div class="ih-bar" id="ih-bar">
-      <span class="ih-label">IH</span>
-      <span class="ih-val" id="ih-val">--</span>
-      <span class="ih-src" id="ih-src"></span>
-      <button class="ih-reset-btn" id="ih-reset-btn" onclick="resetIH()" style="display:none;">元に戻す</button>
+  <div class="graph-scroll">
+    <div class="card">
+      <div class="graph-lbl">GH プロファイル（全体）</div>
+      <canvas id="chart-full"></canvas>
     </div>
-    <div style="margin-bottom:8px;">
-      <div class="field-lbl">測点名</div>
-      <input id="point" type="text" placeholder="例：TP.1、No.5">
-    </div>
-    <div class="f-row">
-      <div class="fl">
-        <div class="field-lbl">SP（後視）</div>
-        <input id="sp" type="number" step="0.001" placeholder="0.000" inputmode="decimal">
-      </div>
-      <div class="fl">
-        <div class="field-lbl">FS（前視）</div>
-        <input id="fs" type="number" step="0.001" placeholder="0.000" inputmode="decimal">
-      </div>
-    </div>
-    <div class="f-actions">
-      <button class="btn btn-p" onclick="add()">追加</button>
-    </div>
+    <button class="btn btn-s" onclick="downloadCSV()">📥 CSVダウンロード</button>
   </div>
 </div>
 
+<!-- IH変更モーダル -->
 <div class="overlay" id="modal" onclick="closeModalOutside(event)">
   <div class="modal">
     <div class="modal-t">このGHをIHに変更</div>
     <div class="modal-s">この行以降の測点のIHに適用されます</div>
-    <div class="modal-val" id="modal-val">0.000</div>
-    <div class="modal-note" id="modal-note"></div>
-    <div class="modal-acts">
+    <div class="modal-v" id="modal-v">0.000</div>
+    <div class="modal-n" id="modal-n"></div>
+    <div class="modal-a">
       <button class="btn btn-s" style="flex:1;" onclick="closeModal()">キャンセル</button>
       <button class="btn btn-p" style="flex:2;" onclick="applyIH()">変更する</button>
     </div>
@@ -224,240 +300,285 @@ canvas{width:100%;display:block;}
 </div>
 
 <script>
-let data=[];
-let baseIH=null;
-let pendingIH=null;
-let pendingIHRow=null;
+/* ── データ ── */
+let data=[], baseIH=null, pendingIH=null, pendingRow=null;
 
+/* ── 時刻 ── */
 function tick(){
   const d=new Date();
   document.getElementById('time').textContent=
     String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
 }
-tick();setInterval(tick,10000);
+tick(); setInterval(tick,15000);
 
+/* ── 日時デフォルト ── */
 (function(){
-  const now=new Date();
-  const local=new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,16);
-  document.getElementById('survey-date').value=local;
+  const n=new Date(), l=new Date(n-n.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  document.getElementById('survey-date').value=l;
 })();
 
-function switchTab(name){
-  document.querySelectorAll('.tab').forEach((t,i)=>{
-    t.classList.toggle('active',['setup','measure','graph'][i]===name);
-  });
+/* ── オフライン検知 ── */
+function chkOnline(){
+  document.getElementById('offline-banner').classList.toggle('show',!navigator.onLine);
+}
+window.addEventListener('online',chkOnline);
+window.addEventListener('offline',chkOnline);
+chkOnline();
+
+/* ── タブ ── */
+function switchTab(n){
+  document.querySelectorAll('.tab').forEach((t,i)=>
+    t.classList.toggle('active',['setup','measure','graph'][i]===n));
   document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));
-  document.getElementById('tab-'+name).classList.add('active');
-  document.getElementById('footer').style.display=name==='measure'?'block':'none';
-  if(name==='graph') drawChart('chart-full');
+  document.getElementById('tab-'+n).classList.add('active');
+  if(n==='graph') drawChart('chart-full');
 }
 
+/* ── BM設定 ── */
 function setInit(){
   const gh=parseFloat(document.getElementById('initGH').value);
   if(isNaN(gh)){alert('初期GHを入力してください');return;}
   baseIH=gh;
   const nm=document.getElementById('bmName').value||'BM';
   data=[{point:nm,isBM:true,gh,use:true,ihOverride:null}];
-  save();
-  switchTab('measure');
+  save(); switchTab('measure');
 }
 
-/* 行indexに到達するまでの有効IH */
+/* ── IH取得（行インデックス基準） ── */
 function getIHAt(idx){
   let ih=baseIH;
-  for(let i=0;i<idx;i++){
-    if(data[i].ihOverride!==null&&data[i].ihOverride!==undefined) ih=data[i].ihOverride;
-  }
+  for(let i=0;i<idx;i++)
+    if(data[i].ihOverride!=null) ih=data[i].ihOverride;
   return ih;
 }
-function getCurrentIH(){return getIHAt(data.length);}
+function curIH(){return getIHAt(data.length);}
 
+/* ── 追加 ── */
 function add(){
   const p=document.getElementById('point').value.trim();
-  const spV=parseFloat(document.getElementById('sp').value);
-  const fsV=parseFloat(document.getElementById('fs').value);
+  const sp=parseFloat(document.getElementById('sp').value);
+  const fs=parseFloat(document.getElementById('fs').value);
   if(!p){alert('測点名を入力してください');return;}
-  if(baseIH===null){alert('まず設定タブからBMを登録してください');return;}
-  const ih=getCurrentIH();
-  let gh='';
-  if(!isNaN(fsV)) gh=Number((Number(ih)+Number(fsV)).toFixed(3));
-  data.push({use:true,point:p,sp:isNaN(spV)?'':spV,ih,fs:isNaN(fsV)?'':fsV,gh,ihOverride:null});
+  if(baseIH===null){alert('設定タブからBMを登録してください');return;}
+  const ih=curIH();
+  const gh=isNaN(fs)?'':Number((ih+fs).toFixed(3));
+  data.push({use:true,point:p,sp:isNaN(sp)?'':sp,ih,fs:isNaN(fs)?'':fs,gh,ihOverride:null});
   document.getElementById('point').value='';
   document.getElementById('sp').value='';
   document.getElementById('fs').value='';
+  document.getElementById('point').focus();
   save();
 }
 
-function tapGH(rowIdx){
-  const d=data[rowIdx];
+/* ── GHタップ ── */
+function tapGH(i){
+  const d=data[i];
   if(d.gh===''||isNaN(d.gh)) return;
-  pendingIHRow=rowIdx;
-  pendingIH=d.gh;
-  document.getElementById('modal-val').textContent=Number(d.gh).toFixed(3);
-  const next=rowIdx+1;
-  const remain=data.length-next;
-  document.getElementById('modal-note').textContent=
-    remain>0?`${next+1}行目以降（計${remain}行）のIHを更新します`:'この行の次の測点から適用されます';
+  pendingRow=i; pendingIH=d.gh;
+  document.getElementById('modal-v').textContent=fmtN(d.gh);
+  const rem=data.length-(i+1);
+  document.getElementById('modal-n').textContent=
+    rem>0?`${i+2}行目以降（計${rem}行）のIHを更新`:'次の測点から適用';
   document.getElementById('modal').classList.add('open');
 }
 function closeModalOutside(e){if(e.target===document.getElementById('modal'))closeModal();}
 function closeModal(){document.getElementById('modal').classList.remove('open');}
-
 function applyIH(){
-  if(pendingIHRow===null) return;
-  data[pendingIHRow].ihOverride=pendingIH;
-  recalcFrom(pendingIHRow+1);
-  closeModal();
-  save();
+  if(pendingRow===null) return;
+  data[pendingRow].ihOverride=pendingIH;
+  recalcFrom(pendingRow+1);
+  closeModal(); save();
 }
 
-function resetIH(){
-  data.forEach(d=>d.ihOverride=null);
-  recalcAll();
-  save();
-  updateIHBar();
-}
+/* ── IHリセット ── */
+function resetIH(){data.forEach(d=>d.ihOverride=null);recalcAll();save();}
 
-function recalcFrom(startIdx){
-  for(let i=startIdx;i<data.length;i++){
-    const ih=getIHAt(i);
-    data[i].ih=ih;
-    if(data[i].fs!=='') data[i].gh=Number((Number(ih)+Number(data[i].fs)).toFixed(3));
+/* ── 再計算 ── */
+function recalcFrom(s){
+  for(let i=s;i<data.length;i++){
+    data[i].ih=getIHAt(i);
+    if(data[i].fs!=='') data[i].gh=Number((data[i].ih+data[i].fs).toFixed(3));
   }
 }
 function recalcAll(){recalcFrom(1);}
 
+/* ── ON/OFF ── */
 function toggle(i){data[i].use=!data[i].use;save();}
 
+/* ── 削除 ── */
 function del(i){
-  if(confirm('「'+data[i].point+'」を削除しますか？')){
-    data.splice(i,1);
-    recalcAll();
-    save();
-  }
+  if(confirm('「'+data[i].point+'」を削除しますか？'))
+    {data.splice(i,1);recalcAll();save();}
+}
+
+/* ── 保存（localStorage + IndexedDB両刀） ── */
+let idb=null;
+function openIDB(){
+  const req=indexedDB.open('levelSurvey',1);
+  req.onupgradeneeded=e=>{e.target.result.createObjectStore('kv');};
+  req.onsuccess=e=>{idb=e.target.result;};
+}
+openIDB();
+
+function idbSave(payload){
+  if(!idb) return;
+  try{
+    const tx=idb.transaction('kv','readwrite');
+    tx.objectStore('kv').put(payload,'state');
+  }catch(e){}
+}
+function idbLoad(cb){
+  if(!idb){cb(null);return;}
+  try{
+    const tx=idb.transaction('kv','readonly');
+    const req=tx.objectStore('kv').get('state');
+    req.onsuccess=()=>cb(req.result||null);
+    req.onerror=()=>cb(null);
+  }catch(e){cb(null);}
+}
+
+function getPayload(){
+  return {
+    data, baseIH,
+    place:document.getElementById('place').value,
+    ob1:document.getElementById('observer1').value,
+    ob2:document.getElementById('observer2').value,
+    surveyDate:document.getElementById('survey-date').value,
+    ts:Date.now()
+  };
+}
+function applyPayload(o){
+  if(!o) return;
+  data=o.data||[]; baseIH=o.baseIH||null;
+  if(o.place) document.getElementById('place').value=o.place;
+  if(o.ob1)   document.getElementById('observer1').value=o.ob1;
+  if(o.ob2)   document.getElementById('observer2').value=o.ob2;
+  if(o.surveyDate) document.getElementById('survey-date').value=o.surveyDate;
 }
 
 function save(){
-  try{
-    localStorage.setItem('lvl3',JSON.stringify({
-      data,baseIH,
-      place:document.getElementById('place').value,
-      ob1:document.getElementById('observer1').value,
-      ob2:document.getElementById('observer2').value,
-      surveyDate:document.getElementById('survey-date').value
-    }));
-  }catch(e){}
+  const p=getPayload();
+  try{localStorage.setItem('lvl4',JSON.stringify(p));}catch(e){}
+  idbSave(p);
   render();
 }
 
-function updateIHBar(){
-  const ih=getCurrentIH();
-  document.getElementById('ih-val').textContent=ih!==null?Number(ih).toFixed(3):'--';
-  const hasOverride=data.some(d=>d.ihOverride!==null&&d.ihOverride!==undefined);
-  document.getElementById('ih-src').textContent=hasOverride?'（GHより）':'（BM）';
-  document.getElementById('ih-reset-btn').style.display=hasOverride?'inline':'none';
+/* ── IHバー ── */
+function updIHBar(){
+  const ih=curIH();
+  document.getElementById('ih-val').textContent=ih!=null?fmtN(ih):'--';
+  const ov=data.some(d=>d.ihOverride!=null);
+  document.getElementById('ih-src').textContent=ov?'（GHより）':'（BM）';
+  document.getElementById('ih-rst').style.display=ov?'inline':'none';
 }
 
+/* ── フォーマット ── */
 function fmtN(v){return Number(v).toFixed(3);}
 function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
+/* ── 描画 ── */
 function render(){
-  updateIHBar();
+  updIHBar();
   const empty=document.getElementById('empty-state');
   const tbl=document.getElementById('data-table');
   const tbody=document.getElementById('tbody');
   if(!data.length){empty.style.display='block';tbl.style.display='none';drawChart('chart-inline');return;}
-  empty.style.display='none';tbl.style.display='table';
+  empty.style.display='none'; tbl.style.display='table';
   tbody.innerHTML='';
   data.forEach((d,i)=>{
     const tr=document.createElement('tr');
     if(!d.use) tr.classList.add('off');
-    const fsNum=parseFloat(d.fs);
-    const fsClass=!isNaN(fsNum)?(fsNum>0?'fs-plus':fsNum<0?'fs-minus':''):'';
-    const ihChanged=d.ihOverride!==null&&d.ihOverride!==undefined;
+    const fsN=parseFloat(d.fs);
+    const fsC=isNaN(fsN)?'':(fsN>0?'fs-plus':fsN<0?'fs-minus':'');
+    const ihC=d.ihOverride!=null?'ih-chg':'';
     tr.innerHTML=
       `<td><button class="tog-btn ${d.use?'on':''}" onclick="toggle(${i})">${d.use?'ON':'OFF'}</button></td>`+
       `<td class="td-pt">${escH(d.point)}${d.isBM?'<span class="bm-badge">BM</span>':''}</td>`+
       `<td>${d.sp!==''?fmtN(d.sp):'—'}</td>`+
-      `<td class="${ihChanged?'ih-changed':''}">${d.ih!==undefined?fmtN(d.ih):'—'}</td>`+
-      `<td class="${fsClass}">${d.fs!==''?fmtN(d.fs):'—'}</td>`+
+      `<td class="${ihC}">${d.ih!=null?fmtN(d.ih):'—'}</td>`+
+      `<td class="${fsC}">${d.fs!==''?fmtN(d.fs):'—'}</td>`+
       `<td class="gh-tap" onclick="tapGH(${i})">${d.gh!==''&&!isNaN(d.gh)?fmtN(d.gh):'—'}</td>`+
       `<td><button class="del-btn" onclick="del(${i})">×</button></td>`;
     tbody.appendChild(tr);
   });
+  /* 最終行にスクロール */
+  const last=tbody.lastChild;
+  if(last) last.scrollIntoView({block:'nearest'});
   drawChart('chart-inline');
 }
 
-function drawChart(canvasId){
-  const canvas=document.getElementById(canvasId);
-  if(!canvas) return;
+/* ── グラフ ── */
+function drawChart(id){
+  const cv=document.getElementById(id);
+  if(!cv) return;
   const dpr=window.devicePixelRatio||1;
-  const W=canvas.clientWidth*dpr||300;
-  const H=canvas.clientHeight*dpr||150;
-  canvas.width=W;canvas.height=H;
-  const ctx=canvas.getContext('2d');
+  const W=cv.clientWidth*dpr||300;
+  const H=cv.clientHeight*dpr||80;
+  cv.width=W; cv.height=H;
+  const ctx=cv.getContext('2d');
   ctx.clearRect(0,0,W,H);
   const arr=data.filter(d=>d.use&&d.gh!==''&&!isNaN(d.gh));
   if(arr.length<2){
     ctx.fillStyle='#7070a0';
-    ctx.font=`${12*dpr}px -apple-system`;
-    ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText('データが2点以上必要です',W/2,H/2);
+    ctx.font=`${10*dpr}px -apple-system`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('2点以上入力するとグラフ表示',W/2,H/2);
     return;
   }
-  const vals=arr.map(d=>Number(d.gh));
-  const minV=Math.min(...vals),maxV=Math.max(...vals);
-  const range=maxV-minV||0.001;
-  const padL=52*dpr,padR=10*dpr,padT=10*dpr,padB=24*dpr;
-  const gW=W-padL-padR,gH=H-padT-padB;
-  ctx.strokeStyle='rgba(42,42,58,1)';ctx.lineWidth=1;
-  for(let i=0;i<=4;i++){
-    const y=padT+gH*(i/4);
-    ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(W-padR,y);ctx.stroke();
-  }
+  const vals=arr.map(d=>+d.gh);
+  const mn=Math.min(...vals), mx=Math.max(...vals), rng=mx-mn||0.001;
+  const isSmall=(id==='chart-inline');
+  const pL=isSmall?46*dpr:52*dpr, pR=8*dpr, pT=6*dpr, pB=isSmall?6*dpr:18*dpr;
+  const gW=W-pL-pR, gH=H-pT-pB;
+  /* グリッド */
+  ctx.strokeStyle='rgba(42,42,58,1)'; ctx.lineWidth=1;
+  const gs=isSmall?2:4;
+  for(let i=0;i<=gs;i++){const y=pT+gH*(i/gs);ctx.beginPath();ctx.moveTo(pL,y);ctx.lineTo(W-pR,y);ctx.stroke();}
+  /* ライン */
   ctx.beginPath();
   arr.forEach((d,i)=>{
-    const x=padL+i*(gW/(arr.length-1));
-    const y=padT+gH*(1-(Number(d.gh)-minV)/range);
-    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    const x=pL+i*(gW/(arr.length-1)), y=pT+gH*(1-(+d.gh-mn)/rng);
+    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
   });
-  ctx.strokeStyle='#4f8ef7';ctx.lineWidth=2*dpr;ctx.lineJoin='round';ctx.stroke();
+  ctx.strokeStyle='#4f8ef7'; ctx.lineWidth=1.8*dpr; ctx.lineJoin='round'; ctx.stroke();
+  /* ポイント */
+  const pr=isSmall?2.5*dpr:3.5*dpr;
   arr.forEach((d,i)=>{
-    const x=padL+i*(gW/(arr.length-1));
-    const y=padT+gH*(1-(Number(d.gh)-minV)/range);
-    ctx.beginPath();ctx.arc(x,y,4*dpr,0,Math.PI*2);ctx.fillStyle='#4f8ef7';ctx.fill();
-    ctx.beginPath();ctx.arc(x,y,2*dpr,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+    const x=pL+i*(gW/(arr.length-1)), y=pT+gH*(1-(+d.gh-mn)/rng);
+    ctx.beginPath();ctx.arc(x,y,pr,0,Math.PI*2);ctx.fillStyle='#4f8ef7';ctx.fill();
+    ctx.beginPath();ctx.arc(x,y,pr*.55,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
   });
+  /* Y軸ラベル */
   ctx.fillStyle='#7070a0';
-  ctx.font=`${9*dpr}px -apple-system`;
-  ctx.textAlign='right';ctx.textBaseline='middle';
-  for(let i=0;i<=4;i++){
-    const v=minV+range*(1-i/4);
-    const y=padT+gH*(i/4);
-    ctx.fillText(v.toFixed(3),padL-4,y);
+  ctx.font=`${(isSmall?7.5:8.5)*dpr}px -apple-system`;
+  ctx.textAlign='right'; ctx.textBaseline='middle';
+  for(let i=0;i<=gs;i++){
+    const v=mn+rng*(1-i/gs), y=pT+gH*(i/gs);
+    ctx.fillText(v.toFixed(3),pL-3,y);
   }
-  ctx.font=`${8*dpr}px -apple-system`;
-  ctx.textAlign='center';ctx.textBaseline='top';
-  const step=Math.max(1,Math.ceil(arr.length/5));
-  arr.forEach((d,i)=>{
-    if(i%step!==0&&i!==arr.length-1) return;
-    const x=padL+i*(gW/(arr.length-1));
-    const label=d.point.length>5?d.point.slice(0,5)+'…':d.point;
-    ctx.fillStyle='#7070a0';
-    ctx.fillText(label,x,padT+gH+4);
-  });
+  /* X軸ラベル（大きいグラフのみ） */
+  if(!isSmall){
+    ctx.font=`${7.5*dpr}px -apple-system`;
+    ctx.textAlign='center'; ctx.textBaseline='top';
+    const st=Math.max(1,Math.ceil(arr.length/5));
+    arr.forEach((d,i)=>{
+      if(i%st!==0&&i!==arr.length-1) return;
+      const x=pL+i*(gW/(arr.length-1));
+      ctx.fillStyle='#7070a0';
+      ctx.fillText(d.point.length>5?d.point.slice(0,5)+'…':d.point,x,pT+gH+3);
+    });
+  }
 }
 
+/* ── CSV ── */
 function downloadCSV(){
-  const place=document.getElementById('place').value;
-  const ob1=document.getElementById('observer1').value;
-  const ob2=document.getElementById('observer2').value;
+  const p=document.getElementById('place').value;
+  const o1=document.getElementById('observer1').value;
+  const o2=document.getElementById('observer2').value;
   const dt=document.getElementById('survey-date').value;
-  let csv=`地点名,${place}\n観測者①,${ob1}\n観測者②,${ob2}\n測定日時,${dt}\n\n`;
+  let csv=`地点名,${p}\n観測者①,${o1}\n観測者②,${o2}\n測定日時,${dt}\n\n`;
   csv+='測点,SP,IH,FS,GH\n';
-  data.forEach(d=>{
-    csv+=`${d.point},${d.sp!==''?d.sp:''},${d.ih!==undefined?d.ih:''},${d.fs!==''?d.fs:''},${d.gh!==''?d.gh:''}\n`;
-  });
+  data.forEach(d=>{csv+=`${d.point},${d.sp!==''?d.sp:''},${d.ih!=null?d.ih:''},${d.fs!==''?d.fs:''},${d.gh!==''?d.gh:''}\n`;});
   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
@@ -465,26 +586,32 @@ function downloadCSV(){
   a.click();
 }
 
+/* ── リセット ── */
 function clearAll(){
-  if(confirm('全測定データをリセットしますか？\n（設定情報は残ります）')){
-    data=[];baseIH=null;
-    try{localStorage.removeItem('lvl3');}catch(e){}
+  if(confirm('全測定データをリセットしますか？（設定情報は残ります）')){
+    data=[]; baseIH=null;
+    try{localStorage.removeItem('lvl4');}catch(e){}
+    if(idb){try{idb.transaction('kv','readwrite').objectStore('kv').delete('state');}catch(e){}}
     render();
   }
 }
 
-try{
-  const s=localStorage.getItem('lvl3');
-  if(s){
-    const o=JSON.parse(s);
-    data=o.data||[];baseIH=o.baseIH||null;
-    if(o.place) document.getElementById('place').value=o.place;
-    if(o.ob1) document.getElementById('observer1').value=o.ob1;
-    if(o.ob2) document.getElementById('observer2').value=o.ob2;
-    if(o.surveyDate) document.getElementById('survey-date').value=o.surveyDate;
-  }
-}catch(e){}
-render();
+/* ── 初期ロード：IDB優先、なければlocalStorage ── */
+function loadAndRender(){
+  idbLoad(idbData=>{
+    let lsData=null;
+    try{const s=localStorage.getItem('lvl4');if(s)lsData=JSON.parse(s);}catch(e){}
+    /* 新しい方を使う */
+    const best=(idbData&&lsData)
+      ?(idbData.ts>=lsData.ts?idbData:lsData)
+      :(idbData||lsData);
+    applyPayload(best);
+    render();
+  });
+}
+
+/* IDB open後に読み込む（openが非同期のため少し待つ） */
+setTimeout(loadAndRender, 80);
 </script>
 </body>
 </html>
