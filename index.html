@@ -1,3 +1,4 @@
+CSS replaced: True
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -29,15 +30,33 @@ body{
 /* ヘッダー固定 */
 .hdr{
   flex:0 0 auto;
-  background:var(--bg);border-bottom:1px solid var(--bd);
-  padding:env(safe-area-inset-top,0) 16px 0;
+  background:linear-gradient(160deg,#0c1a2e 0%,#0a0a0f 70%);
+  border-bottom:2px solid rgba(79,142,247,.25);
+  padding:env(safe-area-inset-top,0) 14px 0;
+  position:relative;overflow:hidden;
 }
-.hdr-top{display:flex;align-items:center;justify-content:space-between;padding:10px 0 6px;}
-.app-title{font-size:16px;font-weight:700;}
-.time-badge{font-size:11px;color:var(--mu);background:var(--sf);padding:3px 9px;border-radius:16px;border:1px solid var(--bd);}
-.tabs{display:flex;gap:4px;padding:6px 0;}
-.tab{flex:1;padding:8px 4px;font-size:13px;font-weight:600;border:none;border-radius:var(--rs);cursor:pointer;color:var(--mu);background:transparent;}
-.tab.active{background:var(--ac);color:#fff;}
+.hdr::before{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 17px,rgba(79,142,247,.05) 17px,rgba(79,142,247,.05) 18px);
+  pointer-events:none;
+}
+.hdr::after{
+  content:'';position:absolute;top:0;bottom:0;left:50px;width:1px;
+  background:rgba(248,113,113,.2);pointer-events:none;
+}
+.hdr-top{display:flex;align-items:center;gap:10px;padding:9px 0 6px;position:relative;}
+.app-logo{flex:0 0 auto;width:34px;height:34px;}
+.app-title-wrap{flex:1;min-width:0;}
+.app-title{
+  font-size:15px;font-weight:800;letter-spacing:.05em;line-height:1.15;
+  background:linear-gradient(90deg,#ddeeff 0%,#7eb8ff 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.app-sub{font-size:8.5px;color:var(--mu);letter-spacing:.12em;font-weight:600;margin-top:1px;text-transform:uppercase;}
+.time-badge{flex:0 0 auto;font-size:11px;color:var(--mu);background:var(--sf);padding:3px 9px;border-radius:16px;border:1px solid var(--bd);font-variant-numeric:tabular-nums;}
+.tabs{display:flex;gap:3px;padding:5px 0;position:relative;}
+.tab{flex:1;padding:7px 4px;font-size:12px;font-weight:700;border:none;border-radius:var(--rs);cursor:pointer;color:var(--mu);background:transparent;letter-spacing:.02em;}
+.tab.active{background:linear-gradient(135deg,#2d6cc0,#4f8ef7);color:#fff;box-shadow:0 2px 8px rgba(79,142,247,.3);}
 
 /* コンテンツ全体 */
 .sec{display:none;flex:1 1 auto;overflow:hidden;}
@@ -157,6 +176,35 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
 .modal-n{font-size:11px;color:var(--mu);text-align:center;margin-bottom:14px;}
 .modal-a{display:flex;gap:8px;}
 
+/* 環境タブ */
+.env-sel{
+  width:100%;background:var(--sf2);border:1px solid var(--bd);
+  color:var(--tx);font-size:14px;padding:10px 12px;
+  border-radius:var(--rs);outline:none;-webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237070a0'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;padding-right:30px;
+}
+.env-sel:focus{border-color:var(--ac);}
+textarea{
+  width:100%;background:var(--sf2);border:1px solid var(--bd);
+  color:var(--tx);font-size:14px;padding:10px 12px;
+  border-radius:var(--rs);outline:none;-webkit-appearance:none;resize:none;
+  font-family:inherit;line-height:1.5;
+}
+textarea:focus{border-color:var(--ac);}
+textarea::placeholder{color:var(--mu);}
+.env-check-group{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+.env-chk{
+  display:flex;align-items:center;gap:4px;
+  background:var(--sf2);border:1px solid var(--bd);border-radius:6px;
+  padding:5px 10px;font-size:12px;cursor:pointer;user-select:none;
+  transition:border-color .15s,background .15s;
+}
+.env-chk:has(input:checked){
+  border-color:var(--ac);background:rgba(79,142,247,.15);color:var(--ac);
+}
+.env-chk input{display:none;}
+
 /* オフラインバナー */
 .offline-banner{
   display:none;
@@ -173,13 +221,37 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
 
 <div class="hdr">
   <div class="hdr-top">
-    <div class="app-title">📐 水準測量</div>
+    <!-- SVGロゴ：レベルブック + 水準儀モチーフ -->
+    <svg class="app-logo" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- 測量手帳ベース -->
+      <rect x="3" y="2" width="22" height="29" rx="2.5" fill="#1a2f50" stroke="#3a6ab5" stroke-width="1"/>
+      <!-- 罫線 -->
+      <line x1="7" y1="9" x2="21" y2="9" stroke="rgba(160,196,255,0.4)" stroke-width="0.8"/>
+      <line x1="7" y1="13" x2="21" y2="13" stroke="rgba(160,196,255,0.4)" stroke-width="0.8"/>
+      <line x1="7" y1="17" x2="21" y2="17" stroke="rgba(160,196,255,0.4)" stroke-width="0.8"/>
+      <line x1="7" y1="21" x2="21" y2="21" stroke="rgba(160,196,255,0.4)" stroke-width="0.8"/>
+      <!-- 縦赤線（余白線） -->
+      <line x1="9" y1="6" x2="9" y2="28" stroke="rgba(248,113,113,0.5)" stroke-width="0.9"/>
+      <!-- 水準儀シルエット（右下オーバーレイ） -->
+      <circle cx="26" cy="25" r="7" fill="#0d1b2e" stroke="#3a6ab5" stroke-width="1"/>
+      <!-- 気泡管（水平線） -->
+      <line x1="20" y1="25" x2="32" y2="25" stroke="#4f8ef7" stroke-width="1"/>
+      <!-- 気泡（楕円） -->
+      <ellipse cx="26" cy="25" rx="2.5" ry="1.4" fill="#34d399" opacity="0.9"/>
+      <!-- 三脚の上部 -->
+      <line x1="26" y1="18.5" x2="26" y2="20" stroke="#7eb8ff" stroke-width="1"/>
+    </svg>
+    <div class="app-title-wrap">
+      <div class="app-title">水準測量野帳</div>
+      <div class="app-sub">Level Field Book</div>
+    </div>
     <div class="time-badge" id="time">--:--</div>
   </div>
   <div class="tabs">
     <button class="tab active" onclick="switchTab('setup')">設定</button>
     <button class="tab" onclick="switchTab('measure')">測定</button>
     <button class="tab" onclick="switchTab('graph')">グラフ</button>
+    <button class="tab" onclick="switchTab('env')">環境</button>
   </div>
 </div>
 
@@ -274,6 +346,107 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
   </div>
 </div>
 
+<!-- 河川環境記録 -->
+<div class="sec" id="tab-env">
+  <div class="setup-scroll">
+    <div class="card">
+      <div class="card-lbl">🌊 水況・流況</div>
+      <div class="fields">
+        <div class="row2">
+          <div>
+            <div class="flbl">水位状況</div>
+            <select id="env-water-level" class="env-sel">
+              <option value="">-- 選択 --</option>
+              <option>低水</option><option>平水</option><option>高水</option><option>洪水</option><option>渇水</option>
+            </select>
+          </div>
+          <div>
+            <div class="flbl">流況</div>
+            <select id="env-flow" class="env-sel">
+              <option value="">-- 選択 --</option>
+              <option>清澄</option><option>濁り少</option><option>濁り多</option><option>茶褐色</option><option>白濁</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <div class="flbl">概算水深 (m)</div>
+          <input id="env-depth" type="text" inputmode="url" placeholder="例：0.80" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+        </div>
+        <div>
+          <div class="flbl">概算流速 (m/s)</div>
+          <input id="env-vel" type="text" inputmode="url" placeholder="例：0.30" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-lbl">🌤 気象・現地状況</div>
+      <div class="fields">
+        <div class="row2">
+          <div>
+            <div class="flbl">天候</div>
+            <select id="env-weather" class="env-sel">
+              <option value="">-- 選択 --</option>
+              <option>晴</option><option>薄曇</option><option>曇</option><option>小雨</option><option>雨</option><option>雪</option><option>霧</option>
+            </select>
+          </div>
+          <div>
+            <div class="flbl">気温 (°C)</div>
+            <input id="env-temp" type="text" inputmode="url" placeholder="例：18.5" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+          </div>
+        </div>
+        <div class="row2">
+          <div>
+            <div class="flbl">風向</div>
+            <select id="env-wind-dir" class="env-sel">
+              <option value="">-- 選択 --</option>
+              <option>静穏</option><option>N</option><option>NE</option><option>E</option><option>SE</option><option>S</option><option>SW</option><option>W</option><option>NW</option>
+            </select>
+          </div>
+          <div>
+            <div class="flbl">風速 (m/s)</div>
+            <input id="env-wind-speed" type="text" inputmode="url" placeholder="例：2.0" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-lbl">🏔 河床・護岸状況</div>
+      <div class="fields">
+        <div>
+          <div class="flbl">河床材料</div>
+          <div class="env-check-group" id="env-bed">
+            <label class="env-chk"><input type="checkbox" value="岩盤">岩盤</label>
+            <label class="env-chk"><input type="checkbox" value="礫">礫</label>
+            <label class="env-chk"><input type="checkbox" value="砂礫">砂礫</label>
+            <label class="env-chk"><input type="checkbox" value="砂">砂</label>
+            <label class="env-chk"><input type="checkbox" value="シルト">シルト</label>
+            <label class="env-chk"><input type="checkbox" value="粘土">粘土</label>
+          </div>
+        </div>
+        <div>
+          <div class="flbl">護岸状況</div>
+          <div class="env-check-group" id="env-bank">
+            <label class="env-chk"><input type="checkbox" value="良好">良好</label>
+            <label class="env-chk"><input type="checkbox" value="洗掘">洗掘</label>
+            <label class="env-chk"><input type="checkbox" value="崩落">崩落</label>
+            <label class="env-chk"><input type="checkbox" value="堆積">堆積</label>
+            <label class="env-chk"><input type="checkbox" value="植生あり">植生あり</label>
+            <label class="env-chk"><input type="checkbox" value="流木">流木</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-lbl">📝 特記事項・所見</div>
+      <div class="fields">
+        <textarea id="env-note" rows="4" placeholder="異常水位・出水痕跡・設備状況・アクセス路の状況など自由記入"></textarea>
+      </div>
+    </div>
+    <button class="btn btn-p" onclick="saveEnv()">環境記録を保存</button>
+    <div id="env-saved-msg" style="display:none;text-align:center;font-size:12px;color:var(--pl);margin-top:4px;">✓ 保存しました</div>
+  </div>
+</div>
+
 <!-- グラフ -->
 <div class="sec" id="tab-graph">
   <div class="graph-scroll">
@@ -365,7 +538,7 @@ chkOnline();
 /* ── タブ ── */
 function switchTab(n){
   document.querySelectorAll('.tab').forEach((t,i)=>
-    t.classList.toggle('active',['setup','measure','graph'][i]===n));
+    t.classList.toggle('active',['setup','measure','graph','env'][i]===n));
   document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));
   document.getElementById('tab-'+n).classList.add('active');
   if(n==='graph') drawChart('chart-full');
@@ -619,7 +792,43 @@ function downloadCSV(){
   const o2=document.getElementById('observer2').value;
   const dt=document.getElementById('survey-date').value;
   let csv=`地点名,${p}\n観測者①,${o1}\n観測者②,${o2}\n測定日時,${dt}\n\n`;
-  csv+='測点,SP,IH,FS,GH\n';
+  // 環境データをCSVに含める
+  try{
+    const env=JSON.parse(localStorage.getItem('lvl4_env')||'{}');
+    if(env.waterLevel||env.weather||env.note){
+      csv+='
+--- 河川環境記録 ---
+';
+      if(env.savedAt) csv+='記録日時,'+env.savedAt+'
+';
+      if(env.waterLevel) csv+='水位状況,'+env.waterLevel+'
+';
+      if(env.flow) csv+='流況,'+env.flow+'
+';
+      if(env.depth) csv+='概算水深(m),'+env.depth+'
+';
+      if(env.vel) csv+='概算流速(m/s),'+env.vel+'
+';
+      if(env.weather) csv+='天候,'+env.weather+'
+';
+      if(env.temp) csv+='気温(°C),'+env.temp+'
+';
+      if(env.windDir) csv+='風向,'+env.windDir+'
+';
+      if(env.windSpeed) csv+='風速(m/s),'+env.windSpeed+'
+';
+      if(env.bed&&env.bed.length) csv+='河床材料,'+env.bed.join('/')+'
+';
+      if(env.bank&&env.bank.length) csv+='護岸状況,'+env.bank.join('/')+'
+';
+      if(env.note) csv+='特記事項,"'+env.note.replace(/"/g,'""')+'"
+';
+      csv+='
+';
+    }
+  }catch(ex){}
+  csv+='測点,SP,IH,FS,GH
+';
   data.forEach(d=>{csv+=`${d.point},${d.sp!==''?d.sp:''},${d.ih!=null?d.ih:''},${d.fs!==''?d.fs:''},${d.gh!==''?d.gh:''}\n`;});
   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');
@@ -654,6 +863,46 @@ function loadAndRender(){
 
 /* IDB open後に読み込む（openが非同期のため少し待つ） */
 setTimeout(loadAndRender, 80);
+
+/* ── 河川環境記録 ── */
+function saveEnv(){
+  const envData={
+    waterLevel:document.getElementById('env-water-level').value,
+    flow:document.getElementById('env-flow').value,
+    depth:document.getElementById('env-depth').value,
+    vel:document.getElementById('env-vel').value,
+    weather:document.getElementById('env-weather').value,
+    temp:document.getElementById('env-temp').value,
+    windDir:document.getElementById('env-wind-dir').value,
+    windSpeed:document.getElementById('env-wind-speed').value,
+    bed:Array.from(document.querySelectorAll('#env-bed input:checked')).map(e=>e.value),
+    bank:Array.from(document.querySelectorAll('#env-bank input:checked')).map(e=>e.value),
+    note:document.getElementById('env-note').value,
+    savedAt:new Date().toISOString()
+  };
+  try{localStorage.setItem('lvl4_env',JSON.stringify(envData));}catch(e){}
+  const msg=document.getElementById('env-saved-msg');
+  msg.style.display='block';setTimeout(()=>msg.style.display='none',2000);
+}
+function loadEnv(){
+  try{
+    const s=localStorage.getItem('lvl4_env');
+    if(!s) return;
+    const e=JSON.parse(s);
+    if(e.waterLevel) document.getElementById('env-water-level').value=e.waterLevel;
+    if(e.flow)       document.getElementById('env-flow').value=e.flow;
+    if(e.depth)      document.getElementById('env-depth').value=e.depth;
+    if(e.vel)        document.getElementById('env-vel').value=e.vel;
+    if(e.weather)    document.getElementById('env-weather').value=e.weather;
+    if(e.temp)       document.getElementById('env-temp').value=e.temp;
+    if(e.windDir)    document.getElementById('env-wind-dir').value=e.windDir;
+    if(e.windSpeed)  document.getElementById('env-wind-speed').value=e.windSpeed;
+    if(e.bed)        e.bed.forEach(v=>{const el=document.querySelector('#env-bed input[value="'+v+'"]');if(el)el.checked=true;});
+    if(e.bank)       e.bank.forEach(v=>{const el=document.querySelector('#env-bank input[value="'+v+'"]');if(el)el.checked=true;});
+    if(e.note)       document.getElementById('env-note').value=e.note;
+  }catch(ex){}
+}
+setTimeout(loadEnv,120);
 
 /* ── オフライン対応：Service Worker を動的生成・登録 ── */
 (function(){
