@@ -201,7 +201,7 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
       <div class="card-lbl">🔩 BM設定</div>
       <div class="fields">
         <div><div class="flbl">BM測点名</div><input id="bmName" type="text" placeholder="例：BM.1"></div>
-        <div><div class="flbl">初期GH（標高）</div><input id="initGH" type="text" inputmode="decimal" placeholder="例：10.000" autocomplete="off" autocorrect="off" spellcheck="false"></div>
+        <div><div class="flbl">初期GH（標高）</div><input id="initGH" type="text" inputmode="text" pattern="-?[0-9]*\.?[0-9]*" placeholder="例：10.000" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"></div>
       </div>
     </div>
     <button class="btn btn-p" onclick="setInit()">測定開始</button>
@@ -262,11 +262,11 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
         </div>
         <div class="fi">
           <div class="flbl">SP</div>
-          <input id="sp" type="text" inputmode="decimal" placeholder="0.000" autocomplete="off" autocorrect="off" spellcheck="false">
+          <input id="sp" type="text" inputmode="text" pattern="-?[0-9]*\.?[0-9]*" placeholder="0.000" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
         </div>
         <div class="fi">
           <div class="flbl">FS</div>
-          <input id="fs" type="text" inputmode="decimal" placeholder="0.000" autocomplete="off" autocorrect="off" spellcheck="false">
+          <input id="fs" type="text" inputmode="text" pattern="-?[0-9]*\.?[0-9]*" placeholder="0.000" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
         </div>
         <button class="add-btn" onclick="add()">追加</button>
       </div>
@@ -300,7 +300,44 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
 </div>
 
 <script>
-/* ── データ ── */
+/* ── 数値入力ヘルパー（iPhone対応） ── */
+(function(){
+  /* 対象フィールドID */
+  const numFields=['sp','fs','initGH'];
+
+  /* 入力中：数値として有効な文字以外を除去 */
+  function sanitize(el){
+    const s=el.value;
+    /* 許可：先頭のマイナス、数字、小数点1つのみ */
+    let out=s.replace(/[^0-9.\-]/g,'');
+    /* マイナスは先頭のみ許可 */
+    out=out.replace(/(?!^)-/g,'');
+    /* 小数点は最初の1つだけ */
+    const parts=out.split('.');
+    if(parts.length>2) out=parts[0]+'.'+parts.slice(1).join('');
+    if(el.value!==out) el.value=out;
+  }
+
+  /* blur時：値があれば3桁フォーマット */
+  function autoFmt(el){
+    const v=parseFloat(el.value);
+    if(!isNaN(v)) el.value=v.toFixed(3);
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){},false);
+  /* DOMが既に準備済みの場合も考慮して即時実行 */
+  function attach(){
+    numFields.forEach(id=>{
+      const el=document.getElementById(id);
+      if(!el) return;
+      el.addEventListener('input',()=>sanitize(el));
+      el.addEventListener('blur',()=>autoFmt(el));
+    });
+  }
+  /* scriptは末尾なのでDOMは既存 */
+  attach();
+})();
+
 let data=[], baseIH=null, pendingIH=null, pendingRow=null;
 
 /* ── 時刻 ── */
