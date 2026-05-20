@@ -261,20 +261,6 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
 .dp-hist-thumb{width:40px;height:28px;object-fit:cover;border-radius:4px;border:1px solid var(--bd);}
 .dp-hist-info{flex:1;min-width:0;}
 .dp-hist-date{font-size:11px;color:var(--tx);}
-.dp-loc-bar{
-  flex:0 0 auto;display:flex;align-items:center;gap:6px;
-  padding:7px 12px;background:var(--sf);border-bottom:1px solid var(--bd);
-}
-.dp-loc-lbl{font-size:11px;color:var(--mu);white-space:nowrap;}
-.dp-loc-sel{
-  flex:1;background:var(--sf2);border:1px solid var(--bd);
-  color:var(--tx);font-size:12px;padding:5px 8px;
-  border-radius:6px;outline:none;-webkit-appearance:none;appearance:none;
-}
-.btn-icon{
-  background:transparent;border:none;color:var(--mn);
-  font-size:16px;padding:4px 6px;cursor:pointer;
-}
 .dp-hist-del{font-size:12px;color:var(--mn);background:transparent;border:none;padding:4px 8px;cursor:pointer;}
 
 /* オフラインバナー */
@@ -284,6 +270,123 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
   color:var(--mn);font-size:11px;text-align:center;padding:4px;
 }
 .offline-banner.show{display:block;}
+
+/* ── テンキーパッド ── */
+.numpad-overlay{
+  display:none;position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(3px);
+  align-items:flex-end;
+}
+.numpad-overlay.open{display:flex;}
+.numpad-sheet{
+  width:100%;background:var(--sf);
+  border-radius:16px 16px 0 0;
+  padding:0 0 env(safe-area-inset-bottom,0);
+  box-shadow:0 -4px 24px rgba(0,0,0,.5);
+}
+.numpad-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 16px 6px;border-bottom:1px solid var(--bd);
+}
+.numpad-target-lbl{font-size:13px;font-weight:700;color:var(--ac);}
+.numpad-display{
+  font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;
+  color:var(--tx);min-width:120px;text-align:right;
+  letter-spacing:.04em;
+}
+.numpad-close{background:transparent;border:none;color:var(--mu);font-size:22px;padding:4px 8px;cursor:pointer;}
+.numpad-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:6px;padding:10px 12px;
+}
+.nk{
+  height:58px;font-size:22px;font-weight:600;
+  background:var(--sf2);border:1px solid var(--bd);
+  border-radius:10px;color:var(--tx);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;transition:background .08s;
+}
+.nk:active{background:var(--bd);}
+.nk.nk-zero{grid-column:span 1;}
+.nk.nk-del{background:var(--sf);color:var(--mn);}
+.nk.nk-ok{background:var(--ac);color:#fff;font-size:16px;}
+.nk.nk-minus{color:var(--pl);}
+.nk.nk-next{background:rgba(79,142,247,.15);color:var(--ac);font-size:14px;}
+
+/* ── 測点候補 ── */
+.pt-suggest{
+  display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;
+  padding:6px 12px;border-bottom:1px solid var(--bd);
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;
+}
+.pt-suggest::-webkit-scrollbar{display:none;}
+.pt-chip{
+  flex:0 0 auto;padding:6px 12px;font-size:12px;font-weight:600;
+  background:var(--sf2);border:1px solid var(--bd);border-radius:20px;
+  color:var(--tx);cursor:pointer;white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;
+}
+.pt-chip:active{background:var(--ac);border-color:var(--ac);color:#fff;}
+.pt-chip.selected{background:var(--ac);border-color:var(--ac);color:#fff;}
+
+/* ── OCRボタン ── */
+.ocr-btn{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  width:100%;padding:10px;font-size:13px;font-weight:700;
+  background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3);
+  border-radius:var(--rs);color:var(--pl);cursor:pointer;
+  margin-bottom:6px;
+}
+.ocr-btn:active{background:rgba(52,211,153,.25);}
+.ocr-spinner{display:none;width:14px;height:14px;border:2px solid var(--pl);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── GPS地点ボタン ── */
+.gps-btn{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:5px 10px;font-size:11px;font-weight:600;
+  background:rgba(79,142,247,.12);border:1px solid rgba(79,142,247,.3);
+  border-radius:6px;color:var(--ac);cursor:pointer;margin-left:6px;
+}
+
+/* ── グラフタブ 過去断面 ── */
+.section-ctrl{
+  display:flex;align-items:center;gap:8px;padding:8px 12px;
+  background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);
+  margin-bottom:8px;
+}
+.section-ctrl select{
+  flex:1;background:var(--sf2);border:1px solid var(--bd);
+  color:var(--tx);font-size:12px;padding:5px 8px;
+  border-radius:6px;outline:none;-webkit-appearance:none;
+}
+.section-ctrl-lbl{font-size:11px;color:var(--mu);white-space:nowrap;}
+.section-save-btn{
+  padding:5px 12px;font-size:12px;font-weight:700;
+  background:var(--ac);color:#fff;border:none;border-radius:6px;cursor:pointer;
+}
+.graph-opacity-row{
+  display:flex;align-items:center;gap:8px;
+  padding:0 12px 8px;font-size:11px;color:var(--mu);
+}
+.graph-opacity-row input[type=range]{flex:1;}
+
+/* ── 入力行改善 ── */
+.inp-row{display:flex;align-items:flex-end;gap:6px;}
+.fi-pt{flex:1 1 0;}
+.fi-num{flex:0 0 80px;}
+.num-fake{
+  width:100%;height:40px;
+  background:var(--sf2);border:1px solid var(--bd);border-radius:var(--rs);
+  display:flex;align-items:center;justify-content:flex-end;
+  padding:0 10px;font-size:16px;font-variant-numeric:tabular-nums;
+  color:var(--tx);cursor:pointer;font-weight:600;
+  transition:border-color .15s;
+}
+.num-fake.active{border-color:var(--ac);}
+.num-fake.empty{color:var(--mu);font-size:13px;}
+
 </style>
 </head>
 <body>
@@ -333,7 +436,13 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
     <div class="card">
       <div class="card-lbl">📍 現場情報</div>
       <div class="fields">
-        <div><div class="flbl">地点名</div><input id="place" type="text" placeholder="例：○○地区 △△工区"></div>
+        <div>
+  <div class="flbl" style="display:flex;align-items:center;">
+    地点名
+    <button class="gps-btn" onclick="gpsPlace()">📍 GPS取得</button>
+  </div>
+  <input id="place" type="text" placeholder="例：○○地区 △△工区">
+</div>
         <div class="row2">
           <div><div class="flbl">観測者①</div><input id="observer1" type="text" placeholder="名前"></div>
           <div><div class="flbl">観測者②</div><input id="observer2" type="text" placeholder="名前"></div>
@@ -399,18 +508,28 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
         <span class="ih-src" id="ih-src"></span>
         <button class="ih-rst" id="ih-rst" onclick="resetIH()" style="display:none;">元に戻す</button>
       </div>
+      <!-- OCRボタン -->
+      <button class="ocr-btn" onclick="ocrCapture()">
+        <span id="ocr-spinner" class="ocr-spinner"></span>
+        📷 TS画面を撮影してSP・FS自動入力
+      </button>
+      <!-- 測点候補 -->
+      <div class="pt-suggest" id="pt-suggest"></div>
+      <!-- 入力行 -->
       <div class="inp-row">
-        <div class="fi fi-lg">
+        <div class="fi-pt">
           <div class="flbl">測点名</div>
-          <input id="point" type="text" inputmode="url" placeholder="TP.1 / No.5" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+          <input id="point" type="text" inputmode="url" placeholder="測点名" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" oninput="filterSuggest(this.value)">
         </div>
-        <div class="fi">
+        <div class="fi-num">
           <div class="flbl">SP</div>
-          <input id="sp" type="text" inputmode="url" pattern="-?[0-9]*\.?[0-9]*" placeholder="0.000" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+          <div class="num-fake empty" id="sp-display" onclick="openNumpad('sp')">0.000</div>
+          <input type="hidden" id="sp" value="">
         </div>
-        <div class="fi">
+        <div class="fi-num">
           <div class="flbl">FS</div>
-          <input id="fs" type="text" inputmode="url" pattern="-?[0-9]*\.?[0-9]*" placeholder="0.000" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+          <div class="num-fake empty" id="fs-display" onclick="openNumpad('fs')">0.000</div>
+          <input type="hidden" id="fs" value="">
         </div>
         <button class="add-btn" onclick="add()">追加</button>
       </div>
@@ -418,101 +537,102 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
   </div>
 </div>
 
+<!-- テンキーパッド -->
+<div class="numpad-overlay" id="numpad-overlay" onclick="numpadBgClick(event)">
+  <div class="numpad-sheet">
+    <div class="numpad-hdr">
+      <span class="numpad-target-lbl" id="numpad-lbl">SP</span>
+      <span class="numpad-display" id="numpad-display">0.000</span>
+      <button class="numpad-close" onclick="closeNumpad()">✕</button>
+    </div>
+    <div class="numpad-grid">
+      <button class="nk" onclick="nkPress('7')">7</button>
+      <button class="nk" onclick="nkPress('8')">8</button>
+      <button class="nk" onclick="nkPress('9')">9</button>
+      <button class="nk" onclick="nkPress('4')">4</button>
+      <button class="nk" onclick="nkPress('5')">5</button>
+      <button class="nk" onclick="nkPress('6')">6</button>
+      <button class="nk" onclick="nkPress('1')">1</button>
+      <button class="nk" onclick="nkPress('2')">2</button>
+      <button class="nk" onclick="nkPress('3')">3</button>
+      <button class="nk nk-minus" onclick="nkPress('-')">±</button>
+      <button class="nk" onclick="nkPress('0')">0</button>
+      <button class="nk" onclick="nkPress('.')">.</button>
+      <button class="nk nk-del" onclick="nkPress('del')" style="grid-column:span 1;">⌫</button>
+      <button class="nk nk-next" onclick="nkNext()">次へ▶</button>
+      <button class="nk nk-ok" onclick="nkOk()">✓ OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- OCR用ファイル入力 -->
+<input type="file" id="ocr-file" accept="image/*" capture="environment" style="display:none;">
+
 <!-- 定点観測 -->
 <div class="sec" id="tab-env">
   <div class="dp-wrap">
 
-    <!-- 地点セレクタ -->
-    <div class="dp-loc-bar">
-      <span class="dp-loc-lbl">地点</span>
-      <select id="dp-loc-sel" class="dp-loc-sel"></select>
-      <span class="dp-loc-lbl" style="margin-left:4px;">モード</span>
-      <select id="dp-mode-sel" class="dp-loc-sel" style="width:80px;">
-        <option value="photo">写真</option>
-        <option value="graph">断面図</option>
-      </select>
+    <!-- ビューア（写真 + カメラ重ね合わせ） -->
+    <div class="dp-viewer" id="dp-viewer">
+
+      <!-- 状態A：写真未登録 -->
+      <div class="dp-empty" id="dp-empty">
+        <div class="dp-empty-ico">📷</div>
+        <div class="dp-empty-txt">基準写真を登録してください</div>
+        <label class="btn btn-p dp-upload-btn">
+          写真を選択
+          <input type="file" id="dp-file-input" accept="image/*" style="display:none">
+        </label>
+      </div>
+
+      <!-- 状態B：比較モード -->
+      <div class="dp-compare" id="dp-compare" style="display:none">
+        <!-- 基準写真（半透明オーバーレイ） -->
+        <img id="dp-base-img" class="dp-base-img">
+        <!-- カメラプレビュー -->
+        <video id="dp-video" class="dp-video" autoplay playsinline muted></video>
+        <!-- グリッド線 -->
+        <canvas id="dp-grid" class="dp-grid"></canvas>
+        <!-- 日付バッジ -->
+        <div class="dp-date-badge" id="dp-date-badge"></div>
+      </div>
     </div>
 
-    <!-- ── 写真モード ── -->
-    <div id="dp-photo-mode" style="display:flex;flex-direction:column;flex:1;min-height:0;">
-
-      <!-- ビューア -->
-      <div class="dp-viewer" id="dp-viewer">
-        <div class="dp-empty" id="dp-empty">
-          <div class="dp-empty-ico">📷</div>
-          <div class="dp-empty-txt">基準写真を登録してください</div>
-          <label class="btn btn-p dp-upload-btn">
-            写真を選択
-            <input type="file" id="dp-file-input" accept="image/*" style="display:none">
-          </label>
-        </div>
-        <div class="dp-compare" id="dp-compare" style="display:none">
-          <img id="dp-base-img" class="dp-base-img">
-          <video id="dp-video" class="dp-video" autoplay playsinline muted></video>
-          <canvas id="dp-grid" class="dp-grid"></canvas>
-          <div class="dp-date-badge" id="dp-date-badge"></div>
-        </div>
+    <!-- コントロールパネル -->
+    <div class="dp-panel" id="dp-panel" style="display:none">
+      <div class="dp-ctrl-row">
+        <span class="dp-ctrl-lbl">透過度</span>
+        <input type="range" id="dp-opacity" min="0" max="100" value="50" class="dp-slider">
+        <span class="dp-ctrl-val" id="dp-opacity-val">50%</span>
       </div>
-
-      <!-- コントロールパネル -->
-      <div class="dp-panel" id="dp-panel" style="display:none">
-        <div class="dp-ctrl-row">
-          <span class="dp-ctrl-lbl">透過度</span>
-          <input type="range" id="dp-opacity" min="0" max="100" value="50" class="dp-slider">
-          <span class="dp-ctrl-val" id="dp-opacity-val">50%</span>
-        </div>
-        <div class="dp-ctrl-row">
-          <span class="dp-ctrl-lbl">グリッド</span>
-          <button class="dp-tog" id="dp-grid-tog">OFF</button>
-          <span class="dp-ctrl-val"></span>
-        </div>
+      <div class="dp-ctrl-row">
+        <span class="dp-ctrl-lbl">グリッド</span>
+        <button class="dp-tog" id="dp-grid-tog" data-on="false">OFF</button>
+        <span class="dp-ctrl-val"></span>
       </div>
+    </div>
 
-      <!-- ボタン群 -->
-      <div class="dp-btns">
-        <div id="dp-btns-registered" style="display:none">
-          <div class="row2" style="gap:8px;margin-bottom:8px;">
-            <button class="btn btn-p" id="dp-camera-btn">📷 カメラ起動</button>
-            <button class="btn btn-s" id="dp-capture-btn" style="display:none">🔴 撮影・保存</button>
-          </div>
-          <div class="row2" style="gap:8px;">
-            <label class="btn btn-s dp-upload-btn" style="text-align:center;display:block;">
-              🔄 写真を更新
-              <input type="file" id="dp-file-input2" accept="image/*" style="display:none">
-            </label>
-            <button class="btn btn-d" id="dp-clear-btn">🗑 写真削除</button>
-          </div>
+    <!-- ボタン群 -->
+    <div class="dp-btns">
+      <div id="dp-btns-registered" style="display:none">
+        <div class="row2" style="gap:8px;margin-bottom:8px;">
+          <button class="btn btn-p" id="dp-camera-btn">📷 カメラ起動</button>
+          <button class="btn btn-s" id="dp-capture-btn" style="display:none">🔴 撮影保存</button>
         </div>
-        <div id="dp-btns-empty" style="display:none;">
-          <label class="btn btn-p dp-upload-btn" style="text-align:center;display:block;width:100%;">
-            📂 基準写真を選択
-            <input type="file" id="dp-file-input3" accept="image/*" style="display:none">
+        <div class="row2" style="gap:8px;">
+          <label class="btn btn-s dp-upload-btn" style="text-align:center;display:block;">
+            🔄 写真を更新
+            <input type="file" id="dp-file-input2" accept="image/*" style="display:none">
           </label>
+          <button class="btn btn-d" id="dp-clear-btn">🗑 削除</button>
         </div>
       </div>
     </div>
 
-    <!-- ── 断面図モード ── -->
-    <div id="dp-graph-mode" style="display:none;flex-direction:column;flex:1;min-height:0;">
-      <div class="dp-viewer" style="position:relative;">
-        <canvas id="dp-section-cv" style="width:100%;height:100%;display:block;"></canvas>
-        <div class="dp-date-badge" id="dp-graph-badge" style="display:none;"></div>
-      </div>
-      <div class="dp-panel" style="display:block;">
-        <div class="dp-ctrl-row">
-          <span class="dp-ctrl-lbl">過去断面</span>
-          <select id="dp-hist-sel" class="dp-loc-sel" style="flex:1;"></select>
-          <button class="btn-icon" id="dp-hist-del-btn" title="この履歴を削除">🗑</button>
-        </div>
-        <div class="dp-ctrl-row" style="margin-top:4px;">
-          <span class="dp-ctrl-lbl">透過度</span>
-          <input type="range" id="dp-graph-opacity" min="0" max="100" value="40" class="dp-slider">
-          <span class="dp-ctrl-val" id="dp-graph-opacity-val">40%</span>
-        </div>
-      </div>
-      <div class="dp-btns">
-        <button class="btn btn-p" id="dp-save-section-btn">💾 現在の断面を保存</button>
-      </div>
+    <!-- 撮影済み比較リスト -->
+    <div class="dp-history" id="dp-history" style="display:none">
+      <div class="card-lbl" style="padding:0 16px;margin-bottom:6px;">📂 撮影履歴</div>
+      <div id="dp-history-list"></div>
     </div>
 
   </div>
@@ -522,7 +642,22 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
 <div class="sec" id="tab-graph">
   <div class="graph-scroll">
     <div class="card">
-      <div class="graph-lbl">GH プロファイル（全体）</div>
+      <div class="graph-lbl" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>GH プロファイル（全体）</span>
+        <button class="section-save-btn" onclick="saveSection()">💾 断面保存</button>
+      </div>
+      <div class="section-ctrl">
+        <span class="section-ctrl-lbl">過去断面</span>
+        <select id="section-hist-sel" onchange="drawChart('chart-full')">
+          <option value="">（なし）</option>
+        </select>
+        <button style="background:transparent;border:none;color:var(--mn);font-size:16px;cursor:pointer;" onclick="delSection()" title="削除">🗑</button>
+      </div>
+      <div class="graph-opacity-row">
+        <span>過去断面の透過度</span>
+        <input type="range" id="section-opacity" min="0" max="100" value="40" oninput="document.getElementById('section-opacity-val').textContent=this.value+'%';drawChart('chart-full')">
+        <span id="section-opacity-val">40%</span>
+      </div>
       <canvas id="chart-full"></canvas>
     </div>
     <button class="btn btn-s" onclick="downloadCSV()">📥 CSVダウンロード</button>
@@ -547,7 +682,7 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
 /* ── 数値入力ヘルパー（iPhone対応） ── */
 (function(){
   /* 対象フィールドID */
-  const numFields=['sp','fs','initGH'];
+  const numFields=['initGH']; /* sp/fsはテンキーパッドで入力 */
 
   /* 入力中：数値として有効な文字以外を除去 */
   function sanitize(el){
@@ -809,7 +944,19 @@ function drawChart(id){
   const ctx=cv.getContext('2d');
   ctx.clearRect(0,0,W,H);
   const arr=data.filter(d=>d.use&&d.gh!==''&&!isNaN(d.gh));
-  if(arr.length<2){
+
+  /* 過去断面データ取得（グラフタブのみ） */
+  var histPts=[];
+  if(id==='chart-full'){
+    const sel=document.getElementById('section-hist-sel');
+    const idx=sel?parseInt(sel.value):NaN;
+    if(!isNaN(idx)){
+      const hist=getSectionHist();
+      if(hist[idx]) histPts=hist[idx].points;
+    }
+  }
+
+  if(arr.length<2 && histPts.length<2){
     ctx.fillStyle='#7070a0';
     ctx.font=`${10*dpr}px -apple-system`;
     ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -858,6 +1005,31 @@ function drawChart(id){
       ctx.fillStyle='#7070a0';
       ctx.fillText(d.point.length>5?d.point.slice(0,5)+'…':d.point,x,pT+gH+3);
     });
+  }
+
+  /* 過去断面を重ね描き（グラフタブのみ） */
+  if(id==='chart-full' && histPts.length>=2){
+    const allGH=[...vals,...histPts.map(p=>p.gh)];
+    const hmn=Math.min(...allGH), hmx=Math.max(...allGH), hrng=hmx-hmn||0.001;
+    const opEl=document.getElementById('section-opacity');
+    const op=opEl?parseInt(opEl.value)/100:0.4;
+    ctx.strokeStyle='rgba(248,113,113,'+op+')';
+    ctx.lineWidth=1.6*dpr; ctx.lineJoin='round';
+    ctx.beginPath();
+    histPts.forEach((p,i)=>{
+      /* 新スケールで再計算 */
+      const x=pL+i*(gW/(histPts.length-1));
+      const y=pT+gH*(1-(p.gh-hmn)/hrng);
+      i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+    });
+    ctx.stroke();
+    /* 過去断面凡例 */
+    const sel=document.getElementById('section-hist-sel');
+    const lbl=sel&&sel.selectedOptions[0]?sel.selectedOptions[0].textContent:'過去';
+    ctx.fillStyle='rgba(248,113,113,0.8)';
+    ctx.font=`${8*dpr}px -apple-system`;
+    ctx.textAlign='left'; ctx.textBaseline='top';
+    ctx.fillText('▬ '+lbl, pL, 2);
   }
 }
 
@@ -931,408 +1103,490 @@ function loadAndRender(){
 setTimeout(loadAndRender, 80);
 
 /* ── 河川環境記録 ── */
-/* ── 定点観測（地点別・容量最適化版） ── */
+/* ── 定点観測 ── */
 (function(){
-  /*
-   * データ設計:
-   *  localStorage['lvl4_dp_meta']     = { locs:{"地点名":{date,gridOn}} }
-   *  localStorage['lvl4_dp_sections'] = { "地点名":[{date,points:[{no,pt,gh}]}] } 最大3件
-   *  IndexedDB['dp_photos'] key="地点名", value=Blob (リサイズ済みJPEG ~100KB)
-   *  撮影写真は保存せず即ダウンロード → 容量問題なし
-   */
+  var baseImg    = null;   // DataURL
+  var baseDate   = null;   // 撮影日文字列
+  var stream     = null;   // MediaStream
+  var history    = [];     // [{dataUrl, date}]
+  var gridOn     = false;
 
-  var DB_NAME = 'lvl4_dpDB';
-  var DB_VER  = 1;
-  var db      = null;
-  var stream  = null;
-  var gridOn  = false;
-  var currentLoc = '';
-  var mode    = 'photo';
-
-  /* ── IndexedDB ── */
-  function initDB(cb){
-    if(db){ cb(); return; }
-    var req = indexedDB.open(DB_NAME, DB_VER);
-    req.onupgradeneeded = function(e){ e.target.result.createObjectStore('dp_photos'); };
-    req.onsuccess = function(e){ db = e.target.result; cb(); };
-    req.onerror   = function(){ cb(); };
-  }
-  function idbPut(key, blob, cb){
-    if(!db){ cb&&cb(); return; }
-    var tx = db.transaction('dp_photos','readwrite');
-    tx.objectStore('dp_photos').put(blob, key);
-    tx.oncomplete = function(){ cb&&cb(); };
-    tx.onerror    = function(){ cb&&cb(); };
-  }
-  function idbGet(key, cb){
-    if(!db){ cb(null); return; }
-    var req = db.transaction('dp_photos','readonly').objectStore('dp_photos').get(key);
-    req.onsuccess = function(){ cb(req.result||null); };
-    req.onerror   = function(){ cb(null); };
-  }
-  function idbDel(key, cb){
-    if(!db){ cb&&cb(); return; }
-    var tx = db.transaction('dp_photos','readwrite');
-    tx.objectStore('dp_photos').delete(key);
-    tx.oncomplete = function(){ cb&&cb(); };
+  /* ローカルストレージから復元 */
+  function dpLoad(){
+    try{
+      var s = localStorage.getItem('lvl4_dp');
+      if(!s) return;
+      var obj = JSON.parse(s);
+      baseImg  = obj.baseImg  || null;
+      baseDate = obj.baseDate || null;
+      history  = obj.history  || [];
+    }catch(e){}
+    dpRender();
+    dpHistRender();
   }
 
-  /* ── メタ情報（軽量テキスト） ── */
-  function getMeta(){
-    try{ return JSON.parse(localStorage.getItem('lvl4_dp_meta')||'{"locs":{}}'); }
-    catch(e){ return {locs:{}}; }
-  }
-  function saveMeta(m){ localStorage.setItem('lvl4_dp_meta', JSON.stringify(m)); }
-
-  /* ── 断面履歴（GHデータのみ） ── */
-  function getSections(){
-    try{ return JSON.parse(localStorage.getItem('lvl4_dp_sections')||'{}'); }
-    catch(e){ return {}; }
-  }
-  function saveSections(s){ localStorage.setItem('lvl4_dp_sections', JSON.stringify(s)); }
-
-  /* ── 地点セレクタ更新 ── */
-  function refreshLocSel(){
-    var sel  = document.getElementById('dp-loc-sel');
-    var meta = getMeta();
-    var place= (document.getElementById('place')||{}).value||'';
-    var locs = Object.keys(meta.locs);
-    if(place && locs.indexOf(place)===-1) locs.unshift(place);
-    if(!locs.length) locs = ['（地点未設定）'];
-    var prev = sel.value || currentLoc;
-    sel.innerHTML = '';
-    locs.forEach(function(l){
-      var opt = document.createElement('option');
-      opt.value = l; opt.textContent = l; sel.appendChild(opt);
-    });
-    if(prev && locs.indexOf(prev)!==-1) sel.value = prev;
-    currentLoc = sel.value;
+  function dpSave(){
+    try{
+      localStorage.setItem('lvl4_dp', JSON.stringify({
+        baseImg:baseImg, baseDate:baseDate, history:history
+      }));
+    }catch(e){ alert('容量不足のため保存できませんでした。履歴を削除してください。'); }
   }
 
-  document.getElementById('dp-loc-sel').addEventListener('change', function(){
-    currentLoc = this.value;
-    stopCamera();
-    loadLocData();
-  });
-
-  document.getElementById('dp-mode-sel').addEventListener('change', function(){
-    mode = this.value;
-    renderMode();
-    if(mode==='graph') renderSectionGraph();
-  });
-
-  function renderMode(){
-    document.getElementById('dp-photo-mode').style.display = mode==='photo' ? 'flex' : 'none';
-    document.getElementById('dp-graph-mode').style.display = mode==='graph' ? 'flex' : 'none';
+  /* UI切替 */
+  function dpRender(){
+    var hasBase = !!baseImg;
+    document.getElementById('dp-empty').style.display    = hasBase ? 'none' : 'flex';
+    document.getElementById('dp-compare').style.display  = hasBase ? 'block' : 'none';
+    document.getElementById('dp-panel').style.display    = hasBase ? 'block' : 'none';
+    document.getElementById('dp-btns-registered').style.display = hasBase ? 'block' : 'none';
+    if(hasBase){
+      var img = document.getElementById('dp-base-img');
+      img.src = baseImg;
+      img.style.opacity = document.getElementById('dp-opacity').value / 100;
+      document.getElementById('dp-date-badge').textContent = '基準: ' + (baseDate || '');
+    }
   }
 
-  /* ── 地点データ読込 ── */
-  function loadLocData(){
-    refreshLocSel();
-    var meta = getMeta();
-    var info = meta.locs[currentLoc] || {};
-    gridOn = info.gridOn || false;
-    var togBtn = document.getElementById('dp-grid-tog');
-    togBtn.textContent = gridOn ? 'ON' : 'OFF';
-    togBtn.classList.toggle('active', gridOn);
-
-    idbGet(currentLoc, function(blob){
-      if(blob){
-        var url = URL.createObjectURL(blob);
-        var img = document.getElementById('dp-base-img');
-        if(img._prevUrl) URL.revokeObjectURL(img._prevUrl);
-        img._prevUrl = url;
-        img.src = url;
-        img.style.opacity = document.getElementById('dp-opacity').value / 100;
-        document.getElementById('dp-date-badge').textContent = '基準: '+(info.date||'');
-        showCompare(true);
-      } else {
-        showCompare(false);
-      }
-    });
-
-    if(mode==='graph') renderSectionGraph();
-  }
-
-  function showCompare(has){
-    document.getElementById('dp-empty').style.display           = has ? 'none'  : 'flex';
-    document.getElementById('dp-compare').style.display         = has ? 'block' : 'none';
-    document.getElementById('dp-panel').style.display           = has ? 'block' : 'none';
-    document.getElementById('dp-btns-registered').style.display = has ? 'block' : 'none';
-    document.getElementById('dp-btns-empty').style.display      = has ? 'none'  : 'block';
-  }
-
-  /* ── 写真登録（リサイズしてBlobでIndexedDBへ） ── */
-  function onFileSelect(file){
-    if(!file) return;
-    var tmpUrl = URL.createObjectURL(file);
-    var img2   = new Image();
-    img2.onload = function(){
-      URL.revokeObjectURL(tmpUrl);
-      var MAX = 800;
-      var W = img2.naturalWidth, H = img2.naturalHeight;
-      var scale = Math.min(1, MAX / Math.max(W, H));
-      var cw = Math.round(W*scale), ch = Math.round(H*scale);
-      var cv = document.createElement('canvas');
-      cv.width = cw; cv.height = ch;
-      cv.getContext('2d').drawImage(img2, 0, 0, cw, ch);
-      cv.toBlob(function(blob){
-        var meta = getMeta();
-        if(!meta.locs[currentLoc]) meta.locs[currentLoc] = {};
-        meta.locs[currentLoc].date   = new Date().toLocaleDateString('ja-JP');
-        meta.locs[currentLoc].gridOn = gridOn;
-        saveMeta(meta);
-        idbPut(currentLoc, blob, function(){ loadLocData(); });
-      }, 'image/jpeg', 0.72);
-    };
-    img2.src = tmpUrl;
-  }
-  ['dp-file-input','dp-file-input2','dp-file-input3'].forEach(function(id){
-    var el = document.getElementById(id);
-    if(el) el.addEventListener('change', function(){ onFileSelect(this.files[0]); this.value=''; });
-  });
-
-  /* ── 透過スライダー ── */
-  document.getElementById('dp-opacity').addEventListener('input', function(){
-    var v = this.value;
-    document.getElementById('dp-opacity-val').textContent = v+'%';
-    this.style.setProperty('--val', v+'%');
+  /* 透過スライダー */
+  var slider = document.getElementById('dp-opacity');
+  var sliderVal = document.getElementById('dp-opacity-val');
+  slider.addEventListener('input', function(){
+    var v = slider.value;
+    sliderVal.textContent = v + '%';
+    slider.style.setProperty('--val', v + '%');
     var img = document.getElementById('dp-base-img');
-    if(img) img.style.opacity = v/100;
+    if(img) img.style.opacity = v / 100;
   });
 
-  /* ── グリッド ── */
+  /* グリッドトグル */
   document.getElementById('dp-grid-tog').addEventListener('click', function(){
     gridOn = !gridOn;
     this.textContent = gridOn ? 'ON' : 'OFF';
     this.classList.toggle('active', gridOn);
-    var meta = getMeta();
-    if(!meta.locs[currentLoc]) meta.locs[currentLoc] = {};
-    meta.locs[currentLoc].gridOn = gridOn;
-    saveMeta(meta);
     drawGrid();
   });
 
   function drawGrid(){
-    var cv  = document.getElementById('dp-grid');
+    var cv = document.getElementById('dp-grid');
     var ctx = cv.getContext('2d');
-    var W = cv.clientWidth, H = cv.clientHeight;
+    var W = cv.clientWidth;
+    var H = cv.clientHeight;
     cv.width = W; cv.height = H;
     ctx.clearRect(0,0,W,H);
     if(!gridOn) return;
-    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 0.8;
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = 0.8;
+    /* 3x3グリッド */
     for(var i=1;i<3;i++){
       ctx.beginPath(); ctx.moveTo(W*i/3,0); ctx.lineTo(W*i/3,H); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(0,H*i/3); ctx.lineTo(W,H*i/3); ctx.stroke();
     }
+    /* 対角線（構図補助） */
     ctx.strokeStyle = 'rgba(255,255,255,0.12)';
     ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(W,H); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(W,0); ctx.lineTo(0,H); ctx.stroke();
   }
 
-  /* ── カメラ ── */
+  /* ファイル選択（基準写真登録） */
+  function onFileSelect(file){
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e){
+      baseImg  = e.target.result;
+      baseDate = new Date().toLocaleDateString('ja-JP');
+      dpSave();
+      dpRender();
+    };
+    reader.readAsDataURL(file);
+  }
+  document.getElementById('dp-file-input').addEventListener('change', function(){
+    onFileSelect(this.files[0]);
+  });
+  document.getElementById('dp-file-input2').addEventListener('change', function(){
+    onFileSelect(this.files[0]);
+  });
+
+  /* カメラ起動 */
   var cameraBtn  = document.getElementById('dp-camera-btn');
   var captureBtn = document.getElementById('dp-capture-btn');
   var video      = document.getElementById('dp-video');
 
-  function stopCamera(){
-    if(stream){ stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; }
-    video.style.display = 'none';
-    cameraBtn.textContent = '📷 カメラ起動';
-    captureBtn.style.display = 'none';
-  }
-
   cameraBtn.addEventListener('click', function(){
-    if(stream){ stopCamera(); return; }
-    navigator.mediaDevices.getUserMedia({
-      video:{ facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720} }
-    }).then(function(s){
-      stream = s; video.srcObject = s; video.style.display = 'block';
-      cameraBtn.textContent = '⏹ カメラ停止';
-      captureBtn.style.display = '';
-      drawGrid();
-    }).catch(function(err){ alert('カメラエラー: '+err.message); });
+    if(stream){
+      /* カメラ停止 */
+      stream.getTracks().forEach(function(t){ t.stop(); });
+      stream = null;
+      video.style.display = 'none';
+      cameraBtn.textContent = '📷 カメラ起動';
+      captureBtn.style.display = 'none';
+    } else {
+      /* カメラ起動 */
+      var constraints = {
+        video:{ facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1080} }
+      };
+      navigator.mediaDevices.getUserMedia(constraints).then(function(s){
+        stream = s;
+        video.srcObject = s;
+        video.style.display = 'block';
+        cameraBtn.textContent = '⏹ カメラ停止';
+        captureBtn.style.display = '';
+        drawGrid();
+      }).catch(function(err){
+        alert('カメラを起動できませんでした: ' + err.message);
+      });
+    }
   });
 
-  /* 撮影 → 即ダウンロード（端末に保存しない） */
+  /* 撮影・保存 */
   captureBtn.addEventListener('click', function(){
     if(!stream) return;
-    var cv  = document.createElement('canvas');
-    cv.width = video.videoWidth; cv.height = video.videoHeight;
+    /* videoフレームをcanvasに描画して保存 */
+    var cv = document.createElement('canvas');
+    cv.width  = video.videoWidth;
+    cv.height = video.videoHeight;
     var ctx = cv.getContext('2d');
     ctx.drawImage(video, 0, 0);
-    var baseImg = document.getElementById('dp-base-img');
-    if(baseImg && baseImg.src && baseImg.src !== window.location.href){
-      ctx.globalAlpha = parseFloat(document.getElementById('dp-opacity').value)/100;
-      ctx.drawImage(baseImg, 0, 0, cv.width, cv.height);
-      ctx.globalAlpha = 1;
-    }
-    var date  = new Date().toLocaleString('ja-JP');
-    var fname = 'survey_'+currentLoc+'_'+date.replace(/[\/\s:]/g,'-')+'.jpg';
-    cv.toBlob(function(blob){
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = fname; a.click();
-    }, 'image/jpeg', 0.88);
-    /* フラッシュ */
+    var dataUrl = cv.toDataURL('image/jpeg', 0.82);
+    var date = new Date().toLocaleString('ja-JP');
+    history.unshift({ dataUrl:dataUrl, date:date });
+    /* 最大5件保存 */
+    if(history.length > 5) history = history.slice(0,5);
+    dpSave();
+    dpHistRender();
+    /* フラッシュ演出 */
     var flash = document.createElement('div');
     flash.style.cssText = 'position:absolute;inset:0;background:#fff;opacity:0.8;z-index:99;pointer-events:none;transition:opacity .3s';
     document.getElementById('dp-compare').appendChild(flash);
     setTimeout(function(){ flash.style.opacity='0'; setTimeout(function(){ flash.remove(); },300); }, 50);
   });
 
-  /* 写真削除 */
+  /* 削除 */
   document.getElementById('dp-clear-btn').addEventListener('click', function(){
     if(!confirm('基準写真を削除しますか？')) return;
-    stopCamera();
-    var meta = getMeta(); delete meta.locs[currentLoc]; saveMeta(meta);
-    idbDel(currentLoc, function(){ showCompare(false); });
+    if(stream){ stream.getTracks().forEach(function(t){ t.stop(); }); stream=null; }
+    baseImg=null; baseDate=null;
+    dpSave(); dpRender();
   });
 
-  /* ── 断面図モード ── */
-  function getCurrentSectionData(){
-    if(typeof data==='undefined') return null;
-    var pts = data.filter(function(d){ return d.gh!==''; });
-    if(!pts.length) return null;
-    return { date: new Date().toLocaleDateString('ja-JP'),
-             points: pts.map(function(d,i){ return {no:i, pt:d.point, gh:parseFloat(d.gh)||0}; }) };
-  }
-
-  document.getElementById('dp-save-section-btn').addEventListener('click', function(){
-    var sec = getCurrentSectionData();
-    if(!sec){ alert('測定データがありません'); return; }
-    var all = getSections();
-    if(!all[currentLoc]) all[currentLoc] = [];
-    all[currentLoc].unshift(sec);
-    if(all[currentLoc].length > 3) all[currentLoc] = all[currentLoc].slice(0,3);
-    saveSections(all);
-    renderSectionGraph();
-    alert('断面を保存しました（最大3件）');
-  });
-
-  function renderSectionGraph(){
-    var cv  = document.getElementById('dp-section-cv');
-    var W   = cv.clientWidth||300;
-    var H   = cv.clientHeight||200;
-    cv.width = W; cv.height = H;
-    var ctx = cv.getContext('2d');
-    ctx.clearRect(0,0,W,H);
-    ctx.fillStyle = '#0d1520'; ctx.fillRect(0,0,W,H);
-
-    var all   = getSections();
-    var hists = (all[currentLoc]||[]);
-    var cur   = getCurrentSectionData();
-
-    var allPts = [];
-    if(cur) allPts = allPts.concat(cur.points);
-    hists.forEach(function(h){ allPts = allPts.concat(h.points); });
-
-    if(!allPts.length){
-      ctx.fillStyle='#7070a0'; ctx.font='13px sans-serif'; ctx.textAlign='center';
-      ctx.fillText('測定データがありません', W/2, H/2);
-      return;
-    }
-
-    var ghs   = allPts.map(function(p){ return p.gh; });
-    var minGH = Math.min.apply(null, ghs);
-    var maxGH = Math.max.apply(null, ghs);
-    var range = maxGH - minGH || 1;
-    var PAD   = {t:28, b:32, l:46, r:12};
-    var gw    = W - PAD.l - PAD.r;
-    var gh2   = H - PAD.t - PAD.b;
-
-    function toX(i, total){ return PAD.l + (i / Math.max(total-1, 1)) * gw; }
-    function toY(v){ return PAD.t + (1-(v-minGH)/range) * gh2; }
-
-    /* グリッド線 */
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 0.8;
-    for(var gi=0;gi<=4;gi++){
-      var gy = PAD.t + gh2*gi/4;
-      ctx.beginPath(); ctx.moveTo(PAD.l,gy); ctx.lineTo(W-PAD.r,gy); ctx.stroke();
-      ctx.fillStyle='#7070a0'; ctx.font='10px sans-serif'; ctx.textAlign='right';
-      ctx.fillText((maxGH - range*gi/4).toFixed(2), PAD.l-4, gy+3);
-    }
-
-    /* 過去断面 */
-    var histColors = ['rgba(248,113,113,A)','rgba(251,191,36,A)','rgba(167,139,250,A)'];
-    var opac = parseFloat(document.getElementById('dp-graph-opacity').value)/100;
-    hists.forEach(function(h, hi){
-      var col = histColors[hi%3].replace('A', opac);
-      ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.beginPath();
-      h.points.forEach(function(p,pi){
-        var x=toX(pi,h.points.length), y=toY(p.gh);
-        pi===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
-      });
-      ctx.stroke();
-      ctx.fillStyle=col; ctx.font='10px sans-serif'; ctx.textAlign='left';
-      ctx.fillText(h.date, PAD.l, PAD.t-6-hi*13);
-    });
-
-    /* 現在断面 */
-    if(cur && cur.points.length){
-      ctx.strokeStyle='rgba(79,142,247,0.9)'; ctx.lineWidth=2.5; ctx.beginPath();
-      cur.points.forEach(function(p,pi){
-        var x=toX(pi,cur.points.length), y=toY(p.gh);
-        pi===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
-      });
-      ctx.stroke();
-      ctx.fillStyle='rgba(79,142,247,0.9)'; ctx.font='bold 10px sans-serif'; ctx.textAlign='left';
-      ctx.fillText('現在', PAD.l, PAD.t-6-hists.length*13);
-      /* 測点ラベル */
-      ctx.fillStyle='rgba(255,255,255,0.45)'; ctx.font='9px sans-serif'; ctx.textAlign='center';
-      cur.points.forEach(function(p,pi){
-        if(pi%Math.ceil(cur.points.length/8)===0 || cur.points.length<=8){
-          ctx.fillText(p.pt||pi, toX(pi,cur.points.length), H-PAD.b+14);
+  /* 撮影履歴レンダリング */
+  function dpHistRender(){
+    var wrap = document.getElementById('dp-history');
+    var list = document.getElementById('dp-history-list');
+    if(!history.length){ wrap.style.display='none'; return; }
+    wrap.style.display='block';
+    list.innerHTML='';
+    history.forEach(function(item, idx){
+      var div = document.createElement('div');
+      div.className='dp-hist-item';
+      var img = document.createElement('img');
+      img.className='dp-hist-thumb'; img.src=item.dataUrl;
+      var info = document.createElement('div');
+      info.className='dp-hist-info';
+      var d = document.createElement('div');
+      d.className='dp-hist-date'; d.textContent=item.date;
+      info.appendChild(d);
+      var del = document.createElement('button');
+      del.className='dp-hist-del'; del.textContent='削除';
+      del.addEventListener('click', function(e){
+        e.stopPropagation();
+        if(confirm('この記録を削除しますか？')){
+          history.splice(idx,1); dpSave(); dpHistRender();
         }
       });
-    }
-
-    /* 過去断面セレクタ更新 */
-    var histSel = document.getElementById('dp-hist-sel');
-    histSel.innerHTML = '<option value="">（なし）</option>';
-    hists.forEach(function(h,i){
-      var opt=document.createElement('option');
-      opt.value=i; opt.textContent=h.date; histSel.appendChild(opt);
+      /* タップで画像DL */
+      img.addEventListener('click', function(){
+        var a = document.createElement('a');
+        a.href = item.dataUrl;
+        a.download = 'survey_' + item.date.replace(/[\/\s:]/g,'-') + '.jpg';
+        a.click();
+      });
+      div.appendChild(img); div.appendChild(info); div.appendChild(del);
+      list.appendChild(div);
     });
   }
 
-  document.getElementById('dp-graph-opacity').addEventListener('input', function(){
-    document.getElementById('dp-graph-opacity-val').textContent = this.value+'%';
-    this.style.setProperty('--val', this.value+'%');
-    renderSectionGraph();
-  });
-
-  document.getElementById('dp-hist-del-btn').addEventListener('click', function(){
-    var idx = parseInt(document.getElementById('dp-hist-sel').value);
-    if(isNaN(idx)){ alert('削除する履歴を選択してください'); return; }
-    if(!confirm('この断面履歴を削除しますか？')) return;
-    var all = getSections();
-    if(all[currentLoc]) all[currentLoc].splice(idx,1);
-    saveSections(all);
-    renderSectionGraph();
-  });
-
-  /* タブ切替フック */
+  /* タブ切替時にグリッド再描画 */
   var origSwitch = window.switchTab;
   window.switchTab = function(n){
     origSwitch(n);
-    if(n==='env'){
-      refreshLocSel();
-      loadLocData();
-      setTimeout(drawGrid, 60);
-    }
+    if(n==='env'){ setTimeout(drawGrid,50); }
   };
 
-  /* 初期化 */
-  initDB(function(){
-    refreshLocSel();
-    currentLoc = document.getElementById('dp-loc-sel').value;
-    renderMode();
-    loadLocData();
-  });
-
+  setTimeout(dpLoad, 150);
 })();
 
+
+
+/* ══════════════════════════════════════════════
+   測点候補リスト
+══════════════════════════════════════════════ */
+var POINT_LIST = [
+  '堤内肩','堤外肩','肩','尻','WLH','川中',
+  'エルボーTOP','取水口TOP','H鋼地山','格納箱芯',
+  'L字地山','L字TOP','水位標','チェック','BM',
+  '橋下流右岸地覆','橋下流左岸地覆',
+  '橋上流右岸地覆','橋上流左岸地覆',
+  '橋中央BM','局舎踊り場'
+];
+/* No.1〜20, TP.1〜10 を先頭に */
+(function(){
+  var extras = [];
+  for(var i=1;i<=20;i++) extras.push('No.'+i);
+  for(var i=1;i<=10;i++) extras.push('TP.'+i);
+  POINT_LIST = extras.concat(POINT_LIST);
+})();
+
+var suggestAll = POINT_LIST.slice();
+
+function filterSuggest(q){
+  q = q.trim().toLowerCase();
+  var filtered = q === ''
+    ? POINT_LIST
+    : POINT_LIST.filter(function(p){ return p.toLowerCase().indexOf(q) !== -1; });
+  renderSuggest(filtered);
+}
+
+function renderSuggest(list){
+  var wrap = document.getElementById('pt-suggest');
+  wrap.innerHTML = '';
+  var cur = document.getElementById('point').value.trim();
+  list.slice(0,20).forEach(function(p){
+    var btn = document.createElement('button');
+    btn.className = 'pt-chip' + (p===cur?' selected':'');
+    btn.textContent = p;
+    btn.addEventListener('click', function(){
+      document.getElementById('point').value = p;
+      renderSuggest(list);
+    });
+    wrap.appendChild(btn);
+  });
+}
+renderSuggest(POINT_LIST);
+
+/* ══════════════════════════════════════════════
+   テンキーパッド
+══════════════════════════════════════════════ */
+var numpadTarget = 'sp';   /* 'sp' | 'fs' */
+var numpadBuf    = '';
+
+function openNumpad(target){
+  numpadTarget = target;
+  var cur = document.getElementById(target).value;
+  numpadBuf = cur || '';
+  updateNumpadDisplay();
+  document.getElementById('numpad-lbl').textContent = target.toUpperCase();
+  document.getElementById('numpad-overlay').classList.add('open');
+  document.getElementById('sp-display').classList.toggle('active', target==='sp');
+  document.getElementById('fs-display').classList.toggle('active', target==='fs');
+}
+
+function closeNumpad(){
+  document.getElementById('numpad-overlay').classList.remove('open');
+  document.getElementById('sp-display').classList.remove('active');
+  document.getElementById('fs-display').classList.remove('active');
+}
+
+function numpadBgClick(e){
+  if(e.target === document.getElementById('numpad-overlay')) closeNumpad();
+}
+
+function nkPress(k){
+  if(k==='del'){
+    numpadBuf = numpadBuf.slice(0,-1);
+  } else if(k==='-'){
+    numpadBuf = numpadBuf.startsWith('-') ? numpadBuf.slice(1) : '-'+numpadBuf;
+  } else if(k==='.'){
+    if(numpadBuf.indexOf('.')===-1) numpadBuf += '.';
+  } else {
+    if(numpadBuf==='0') numpadBuf = k;
+    else numpadBuf += k;
+  }
+  updateNumpadDisplay();
+}
+
+function updateNumpadDisplay(){
+  var disp = numpadBuf==='' ? '0.000' : numpadBuf;
+  document.getElementById('numpad-display').textContent = disp;
+}
+
+function commitNumpad(){
+  var val = numpadBuf;
+  var parsed = parseFloat(val);
+  var formatted = isNaN(parsed) ? '' : parsed.toFixed(3);
+  document.getElementById(numpadTarget).value = formatted;
+  var dispEl = document.getElementById(numpadTarget+'-display');
+  if(formatted===''){
+    dispEl.textContent='0.000'; dispEl.classList.add('empty');
+  } else {
+    dispEl.textContent=formatted; dispEl.classList.remove('empty');
+  }
+}
+
+function nkOk(){
+  commitNumpad();
+  closeNumpad();
+}
+
+function nkNext(){
+  commitNumpad();
+  if(numpadTarget==='sp'){
+    openNumpad('fs');
+  } else {
+    closeNumpad();
+    add();
+  }
+}
+
+/* ══════════════════════════════════════════════
+   GPS地点名取得
+══════════════════════════════════════════════ */
+function gpsPlace(){
+  if(!navigator.geolocation){ alert('GPSが利用できません'); return; }
+  var btn = document.querySelector('.gps-btn');
+  btn.textContent = '⏳ 取得中…';
+  navigator.geolocation.getCurrentPosition(function(pos){
+    var lat = pos.coords.latitude.toFixed(5);
+    var lon = pos.coords.longitude.toFixed(5);
+    var el = document.getElementById('place');
+    el.value = lat+'N,'+lon+'E';
+    btn.textContent = '📍 GPS取得';
+    /* 逆ジオコーディング（オンライン時のみ） */
+    fetch('https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lon+'&format=json&accept-language=ja')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var addr = d.address || {};
+        var name = addr.city||addr.town||addr.village||addr.county||addr.state||'';
+        var road = addr.road||addr.suburb||'';
+        if(name||road) el.value = (name+' '+road).trim();
+      })
+      .catch(function(){/* オフライン時は座標のまま */});
+  }, function(err){
+    alert('GPS取得失敗: '+err.message);
+    btn.textContent = '📍 GPS取得';
+  }, {timeout:10000, enableHighAccuracy:true});
+}
+
+/* ══════════════════════════════════════════════
+   カメラOCR（Claude API）
+══════════════════════════════════════════════ */
+document.getElementById('ocr-file').addEventListener('change', function(){
+  var file = this.files[0];
+  if(!file) return;
+  this.value = '';
+  var spinner = document.getElementById('ocr-spinner');
+  spinner.style.display = 'inline-block';
+
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var b64 = e.target.result.split(',')[1];
+    fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:200,
+        messages:[{
+          role:'user',
+          content:[
+            {type:'image',source:{type:'base64',media_type:file.type||'image/jpeg',data:b64}},
+            {type:'text',text:'この測量機器の液晶画面に表示されている数値を読み取ってください。画面には複数行の数値があります。上から2行目と3行目の数値（小数点付き）のみを抽出し、必ずJSON形式 {"sp": 数値, "fs": 数値} だけで回答してください。他の文字は一切不要です。数値が読み取れない場合は{"sp":null,"fs":null}。'}
+          ]
+        }]
+      })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      spinner.style.display='none';
+      var text = (d.content&&d.content[0]&&d.content[0].text)||'';
+      try{
+        var clean = text.replace(/```json|```/g,'').trim();
+        var obj = JSON.parse(clean);
+        if(obj.sp !== null && obj.sp !== undefined){
+          var spVal = parseFloat(obj.sp).toFixed(3);
+          document.getElementById('sp').value = spVal;
+          document.getElementById('sp-display').textContent = spVal;
+          document.getElementById('sp-display').classList.remove('empty');
+          numpadBuf = String(obj.sp);
+        }
+        if(obj.fs !== null && obj.fs !== undefined){
+          var fsVal = parseFloat(obj.fs).toFixed(3);
+          document.getElementById('fs').value = fsVal;
+          document.getElementById('fs-display').textContent = fsVal;
+          document.getElementById('fs-display').classList.remove('empty');
+        }
+        /* 読み取り結果を一時表示 */
+        var btn = document.querySelector('.ocr-btn');
+        btn.style.color='var(--pl)';
+        btn.querySelector('span:not(.ocr-spinner)') && (btn.lastChild.textContent=' ✓ SP:'+obj.sp+'  FS:'+obj.fs);
+        setTimeout(function(){
+          btn.lastChild.textContent=' TS画面を撮影してSP・FS自動入力';
+        },3000);
+      }catch(ex){
+        alert('読み取り失敗。画面全体が映るように撮影してください。\n'+text);
+      }
+    })
+    .catch(function(err){
+      spinner.style.display='none';
+      alert('通信エラー: '+err.message);
+    });
+  };
+  reader.readAsDataURL(file);
+});
+
+function ocrCapture(){
+  document.getElementById('ocr-file').click();
+}
+
+/* ══════════════════════════════════════════════
+   断面履歴（グラフタブ）
+══════════════════════════════════════════════ */
+function getSectionHist(){
+  try{ return JSON.parse(localStorage.getItem('lvl4_sections')||'[]'); }
+  catch(e){ return []; }
+}
+function saveSectionHist(arr){ localStorage.setItem('lvl4_sections',JSON.stringify(arr)); }
+
+function saveSection(){
+  var arr = data.filter(function(d){ return d.use && d.gh!=='' && !isNaN(d.gh); });
+  if(arr.length < 2){ alert('2点以上の測定データが必要です'); return; }
+  var place = document.getElementById('place').value || '無題';
+  var date  = new Date().toLocaleDateString('ja-JP');
+  var hist  = getSectionHist();
+  hist.unshift({
+    label: place+' '+date,
+    points: arr.map(function(d){ return {pt:d.point, gh:+d.gh}; })
+  });
+  if(hist.length > 3) hist = hist.slice(0,3);
+  saveSectionHist(hist);
+  refreshSectionSel();
+  drawChart('chart-full');
+  alert('断面を保存しました（最大3件）');
+}
+
+function delSection(){
+  var sel = document.getElementById('section-hist-sel');
+  var idx = parseInt(sel.value);
+  if(isNaN(idx)){ alert('削除する断面を選択してください'); return; }
+  if(!confirm('この断面履歴を削除しますか？')) return;
+  var hist = getSectionHist();
+  hist.splice(idx,1);
+  saveSectionHist(hist);
+  refreshSectionSel();
+  drawChart('chart-full');
+}
+
+function refreshSectionSel(){
+  var sel  = document.getElementById('section-hist-sel');
+  if(!sel) return;
+  var hist = getSectionHist();
+  sel.innerHTML = '<option value="">（なし）</option>';
+  hist.forEach(function(h,i){
+    var opt=document.createElement('option');
+    opt.value=i; opt.textContent=h.label; sel.appendChild(opt);
+  });
+}
+refreshSectionSel();
 
 /* ── オフライン対応：Service Worker を動的生成・登録 ── */
 (function(){
