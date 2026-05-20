@@ -1750,124 +1750,73 @@ function gpsPlace(){
     /* ── ラベルベース抽出 ── */
     /* 全行テキストから SP/FS を探す
        戻り値: {sp:number, fs:number} or null */
-    function parseByLabel(fullText){
-      /* 行に分割（空行除去） */
-      var lines = fullText.split(/\r?\n/).map(function(l){ return l.trim(); })
-                          .filter(function(l){ return l.length > 0; });
+    /* ── 数値行抽出（行番号ベース：ラベルに依存しない） ──
+       TSの画面構造は固定：
+         1行目 = 斜距離（不要）
+         2行目 = 水平距離 → SP
+         3行目 = 高低差   → FS
+       数値だけを含む行を順番に取り出す */
+    function parseByPosition(fullText){
+      var lines = fullText.split(/\r?\n/)
+        .map(function(l){
+          /* 全角→半角、OCR誤認補正 */
+          return l.replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0)-0xFEE0); })
+                  .replace(/[－ー−‐]/g,'-')
+                  .replace(/[。．]/g,'.')
+                  .replace(/[Oo]/g,'0')
+                  .replace(/[Iil]/g,'1')
+                  .replace(/[Ss]/g,'5')
+                  .trim();
+        })
+        .filter(function(l){ return l.length > 0; });
 
-      var spVal = NaN, fsVal = NaN;
-
-      /* ラベルパターン定義
-         各パターン: { spRe: 水平距離系, fsRe: 高低差系 }
-         優先度順に試みる */
-      var patterns = [
-        /* ① SDR / ソキア系：水平距離・高低差 */
-        {
-          spRe: /水平距?離|水平距|水平|suihei|HD|hd/i,
-          fsRe: /高低差|こうていさ|高低|VD|vd/i
-        },
-        /* ② トプコン系：dHD / dVD （タイヘン対辺測定） */
-        {
-          spRe: /dHD|HD:|水平距離/i,
-          fsRe: /dVD|VD:|高低差/i
-        },
-        /* ③ ニコン・その他：HZ.DIST / V.DIST, H.DIST / V.DST 等 */
-        {
-          spRe: /H[\s._-]?DIST|HZ[\s._-]?DIST|HDIST/i,
-          fsRe: /V[\s._-]?DIST|VZ[\s._-]?DIST|VDIST/i
+      /* 数値（x.xxx形式）を含む行を抽出 */
+      var numLines = [];
+      lines.forEach(function(l){
+        var m = l.match(/-?\d{1,4}\.\d{1,4}/);
+        if(m){
+          var v = parseFloat(m[0]);
+          if(!isNaN(v)) numLines.push(v);
         }
-      ];
+      });
 
-      /* 各パターンを全行に対して試す */
-      for(var pi=0; pi<patterns.length; pi++){
-        var pat = patterns[pi];
-        for(var li=0; li<lines.length; li++){
-          var ln = lines[li];
-          if(isNaN(spVal) && pat.spRe.test(ln)){
-            var v = extractNum(ln);
-            if(!isNaN(v) && v > 0) spVal = v;   /* 水平距離は正の値 */
-          }
-          if(isNaN(fsVal) && pat.fsRe.test(ln)){
-            var fv = extractNum(ln);
-            if(!isNaN(fv)) fsVal = fv;            /* 高低差はマイナス可 */
-          }
-        }
-        if(!isNaN(spVal) && !isNaN(fsVal)) break; /* 見つかったらパターン探索終了 */
-      }
-
-      /* ── フォールバック：ラベルが読めなかった場合 ──
-         「正の数値行」と「マイナス付き数値行」から推定
-         例： 37.098 → SP,  -5.838 → FS */
-      if(isNaN(spVal) || isNaN(fsVal)){
-        var posNums = [], negNums = [];
-        lines.forEach(function(ln){
-          /* 行に含まれる数値をすべて抽出 */
-          var norm = ln
-            .replace(/[－ー−‐]/g,'-').replace(/[。．]/g,'.').replace(/[Oo]/g,'0');
-          var ms = norm.match(/-?\d{1,3}\.\d{1,4}/g);  /* x.xxx 形式の数値 */
-          if(ms) ms.forEach(function(m){
-            var n = parseFloat(m);
-            if(!isNaN(n)){
-              if(n < 0) negNums.push(n);
-              else if(n > 0) posNums.push(n);
-            }
-          });
-        });
-        /* 水平距離：正の数値のうち最大（通常一番遠い/大きい） */
-        if(isNaN(spVal) && posNums.length > 0){
-          posNums.sort(function(a,b){return b-a;});
-          spVal = posNums[0];
-        }
-        /* 高低差：マイナスの数値があればそれ、なければ正の数値のうち2番目 */
-        if(isNaN(fsVal)){
-          if(negNums.length > 0){
-            /* 絶対値が最小のものを選ぶ（高低差は距離より小さい傾向） */
-            negNums.sort(function(a,b){return Math.abs(a)-Math.abs(b);});
-            fsVal = negNums[0];
-          } else if(posNums.length >= 2){
-            fsVal = posNums[1];
-          }
-        }
-      }
-
-      if(!isNaN(spVal) && !isNaN(fsVal)){
-        return {sp: spVal, fs: fsVal};
+      /* 3値以上あれば 2番目・3番目、2値なら 1番目・2番目 */
+      if(numLines.length >= 3){
+        return { sp: numLines[1], fs: numLines[2] };
+      } else if(numLines.length === 2){
+        return { sp: numLines[0], fs: numLines[1] };
       }
       return null;
     }
 
     /* ── OCR実行 ── */
-    /* Tesseract設定：数値＋記号に絞り、ページモードを「単一ブロック」に */
+    /* whitelist: 数値・記号のみ（日本語除外で精度向上） */
     var ocrParams = {
-      tessedit_char_whitelist: '0123456789.-+:mHDVdABCabcdefghijklmnopqrstuvwxyz \n水平距離高低差対辺測定斜',
-      tessedit_pageseg_mode: '6'   /* PSM 6 = 均一なテキストブロックとして認識 */
+      tessedit_char_whitelist: '0123456789.-+ \n',
+      tessedit_pageseg_mode: '6'
     };
-    /* 全体を一度だけ認識（ラベル込みで読む） */
     tesseractWorker.recognize(fullCanvas, ocrParams)
       .then(function(r){
         var fullText = r.data.text || '';
-        /* デバッグ用：ステータスに中間テキスト表示 */
         var statusEl = document.getElementById('ocr-status');
-        var result = parseByLabel(fullText);
+        var result = parseByPosition(fullText);
 
         if(result){
           var spV = result.sp.toFixed(3);
           var fsV = result.fs.toFixed(3);
           statusEl.style.display = 'none';
-          var rb = document.getElementById('ocr-result-bar');
-          rb.style.display = 'block';
+          document.getElementById('ocr-result-bar').style.display = 'block';
           document.getElementById('ocr-result-txt').textContent =
-            '水平距離（SP）: '+spV+'  高低差（FS）: '+fsV;
+            'SP: '+spV+'　FS: '+fsV;
           ocrPending = {sp:spV, fs:fsV};
           document.getElementById('ocr-confirm-btn').style.display='';
-          /* 値が取れたらスキャン停止。確定ボタン待ち */
           if(ocrTimer){ clearTimeout(ocrTimer); ocrTimer=null; }
         } else {
-          /* 認識テキストの先頭30文字をステータスに表示（診断用） */
+          /* 認識文字を表示（診断用）して再スキャン */
           var preview = fullText.replace(/\s+/g,' ').trim().slice(0,40);
           statusEl.textContent = preview
             ? '読取中… 「'+preview+'」'
-            : '数値を検出中… (液晶全体を枠に収めてください)';
+            : '数値を検出中…（液晶全体を枠に収めてください）';
           statusEl.style.display = '';
           if(ocrTimer) clearTimeout(ocrTimer);
           ocrTimer = setTimeout(captureAndOcr, 1500);
