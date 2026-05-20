@@ -1597,11 +1597,12 @@ function gpsPlace(){
   function initWorker(cb){
     if(tesseractWorker){ cb(); return; }
     loadTesseract(function(){
-      /* jpn+eng 両言語でロード → 日本語ラベル（水平距離・高低差）も認識可能 */
-      Tesseract.createWorker(['jpn','eng'], 1, {
+      /* eng のみでロード（jpnデータは重く失敗しやすいため使わない）
+         ラベル認識は正規表現フォールバックで対応 */
+      Tesseract.createWorker('eng', 1, {
         workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
         corePath:   'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js',
-        langPath:   'https://cdn.jsdelivr.net/npm/tesseract.js-data@4.0.0/',
+        langPath:   'https://cdn.jsdelivr.net/npm/tesseract.js-data@4.0.0/eng/',
         cacheMethod: 'write',
         logger: function(){}
       }).then(function(w){
@@ -1675,32 +1676,58 @@ function gpsPlace(){
     var gx = Math.round(W*0.05), gy = Math.round(H*0.20);
     var gw = Math.round(W*0.90), gh = Math.round(H*0.60);
 
-    /* 前処理：拡大＋コントラスト強調（液晶の薄い文字対策） */
-    function buildCanvas(sx,sy,sw,sh, scale, threshold){
-      var sc  = scale     || 2.5;
-      var thr = threshold || 160;
-      var c   = document.createElement('canvas');
+    /* 前処理：拡大＋適応的コントラスト強調（液晶の色に依存しない）
+       ポイント：
+       ・単純二値化NG → 液晶の緑/青バックライトでグレー値が均一化するため
+       ・代わりに「画像内の明暗分布を自動検出して伸張」する適応処理を使う */
+    function buildCanvas(sx,sy,sw,sh, scale){
+      var sc = scale || 3.0;
+      var c  = document.createElement('canvas');
       c.width  = Math.round(sw * sc);
       c.height = Math.round(sh * sc);
       var ctx = c.getContext('2d');
-      /* 白背景で初期化 */
       ctx.fillStyle = '#fff';
       ctx.fillRect(0,0,c.width,c.height);
       ctx.drawImage(vid, sx,sy,sw,sh, 0,0,c.width,c.height);
       var id = ctx.getImageData(0,0,c.width,c.height);
       var d  = id.data;
-      for(var i=0;i<d.length;i+=4){
-        var gray = 0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
-        /* 液晶背景は明るい → 暗い文字を黒に、背景を白に */
-        var v = gray < thr ? 0 : 255;
-        d[i]=d[i+1]=d[i+2]=v; d[i+3]=255;
+      var n  = d.length;
+
+      /* ① グレースケール変換してヒストグラム取得 */
+      var grays = new Uint8Array(n/4);
+      for(var i=0,j=0; i<n; i+=4,j++){
+        grays[j] = Math.round(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);
+      }
+      /* ② 5%/95%パーセンタイルで範囲を決定（外れ値無視） */
+      var hist = new Uint32Array(256);
+      for(var k=0;k<grays.length;k++) hist[grays[k]]++;
+      var total = grays.length;
+      var lo=0, hi=255, cum=0;
+      for(var v=0;v<256;v++){
+        cum+=hist[v];
+        if(cum/total < 0.05) lo=v;
+        if(cum/total < 0.95) hi=v;
+      }
+      if(hi-lo < 20){ lo=Math.max(0,lo-10); hi=Math.min(255,hi+10); }
+      var range = hi - lo || 1;
+
+      /* ③ 正規化して二値化（適応閾値：分布中央を境界に） */
+      var midThresh = lo + range * 0.55;  /* 液晶は暗い文字が多いため55%寄り */
+      for(var i=0,j=0; i<n; i+=4,j++){
+        var g = grays[j];
+        /* コントラスト伸張 */
+        var stretched = Math.round((g - lo) / range * 255);
+        stretched = Math.max(0, Math.min(255, stretched));
+        /* 閾値で二値化 */
+        var out = (g < midThresh) ? 0 : 255;
+        d[i]=d[i+1]=d[i+2]=out; d[i+3]=255;
       }
       ctx.putImageData(id,0,0);
       return c;
     }
 
     /* 全体キャンバス（ガイド枠内） */
-    var fullCanvas = buildCanvas(gx, gy, gw, gh, 2.5, 160);
+    var fullCanvas = buildCanvas(gx, gy, gw, gh, 3.0);
 
     /* ── 数値抽出ヘルパー ── */
     /* 行テキストから最初の数値（マイナス付き）を抜く */
@@ -1807,8 +1834,13 @@ function gpsPlace(){
     }
 
     /* ── OCR実行 ── */
+    /* Tesseract設定：数値＋記号に絞り、ページモードを「単一ブロック」に */
+    var ocrParams = {
+      tessedit_char_whitelist: '0123456789.-+:mHDVdABCabcdefghijklmnopqrstuvwxyz \n水平距離高低差対辺測定斜',
+      tessedit_pageseg_mode: '6'   /* PSM 6 = 均一なテキストブロックとして認識 */
+    };
     /* 全体を一度だけ認識（ラベル込みで読む） */
-    tesseractWorker.recognize(fullCanvas)
+    tesseractWorker.recognize(fullCanvas, ocrParams)
       .then(function(r){
         var fullText = r.data.text || '';
         /* デバッグ用：ステータスに中間テキスト表示 */
@@ -1829,9 +1861,11 @@ function gpsPlace(){
           if(ocrTimer) clearTimeout(ocrTimer);
           ocrTimer = setTimeout(captureAndOcr, 2000);
         } else {
-          /* ラベルも数値も見つからなかった場合 */
-          statusEl.textContent = '数値を検出中… ('+
-            (fullText.replace(/\s+/g,' ').slice(0,30)||'読取り中')+'…)';
+          /* 認識テキストの先頭30文字をステータスに表示（診断用） */
+          var preview = fullText.replace(/\s+/g,' ').trim().slice(0,40);
+          statusEl.textContent = preview
+            ? '読取中… 「'+preview+'」'
+            : '数値を検出中… (液晶全体を枠に収めてください)';
           statusEl.style.display = '';
           if(ocrTimer) clearTimeout(ocrTimer);
           ocrTimer = setTimeout(captureAndOcr, 1500);
