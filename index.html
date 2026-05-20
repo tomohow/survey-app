@@ -517,9 +517,9 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
         <button class="ih-rst" id="ih-rst" onclick="resetIH()" style="display:none;">元に戻す</button>
       </div>
       <!-- OCRボタン -->
-      <button class="ocr-btn" onclick="ocrCapture()">
+      <button class="ocr-btn" onclick="ocrOpen()">
         <span id="ocr-spinner" class="ocr-spinner"></span>
-        📷 TS画面を撮影してSP・FS自動入力
+        <span id="ocr-btn-txt">📷 TS画面をカメラで自動入力</span>
       </button>
       <!-- 測点候補 -->
       <div class="pt-suggest" id="pt-suggest"></div>
@@ -574,7 +574,32 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
 </div>
 
 <!-- OCR用ファイル入力 -->
-<input type="file" id="ocr-file" accept="image/*" capture="environment" style="display:none;">
+<!-- OCRカメラモーダル -->
+<div class="overlay" id="ocr-overlay" style="align-items:stretch;">
+  <div style="display:flex;flex-direction:column;width:100%;height:100%;background:#000;position:relative;">
+    <!-- ガイド枠ラベル -->
+    <div style="position:absolute;top:env(safe-area-inset-top,12px);left:0;right:0;text-align:center;z-index:10;padding-top:12px;">
+      <span style="background:rgba(0,0,0,.6);color:#fff;font-size:12px;padding:4px 14px;border-radius:16px;">液晶画面を枠に合わせてください</span>
+    </div>
+    <!-- カメラ映像 -->
+    <video id="ocr-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;"></video>
+    <!-- ガイド枠オーバーレイ -->
+    <canvas id="ocr-guide" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></canvas>
+    <!-- 状態表示 -->
+    <div style="position:absolute;bottom:140px;left:0;right:0;text-align:center;z-index:10;">
+      <span id="ocr-status" style="background:rgba(0,0,0,.65);color:#fff;font-size:13px;padding:6px 18px;border-radius:20px;">準備中…</span>
+    </div>
+    <!-- 結果プレビュー -->
+    <div id="ocr-result-bar" style="display:none;position:absolute;bottom:140px;left:16px;right:16px;background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.4);border-radius:12px;padding:10px 16px;text-align:center;z-index:10;">
+      <span style="color:#34d399;font-size:15px;font-weight:700;" id="ocr-result-txt"></span>
+    </div>
+    <!-- ボタン -->
+    <div style="position:absolute;bottom:0;left:0;right:0;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0));background:rgba(0,0,0,.7);display:flex;gap:10px;z-index:10;">
+      <button onclick="ocrClose()" style="flex:1;padding:14px;font-size:15px;font-weight:700;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:12px;color:#fff;cursor:pointer;">キャンセル</button>
+      <button id="ocr-confirm-btn" onclick="ocrConfirm()" style="display:none;flex:2;padding:14px;font-size:15px;font-weight:700;background:#4f8ef7;border:none;border-radius:12px;color:#fff;cursor:pointer;">✓ この値を使用</button>
+    </div>
+  </div>
+</div>
 
 <!-- 定点観測 -->
 <div class="sec" id="tab-env">
@@ -1550,75 +1575,235 @@ function gpsPlace(){
 }
 
 /* ══════════════════════════════════════════════
-   カメラOCR（Claude API）
+   カメラOCR（Tesseract.js オフライン対応）
 ══════════════════════════════════════════════ */
-document.getElementById('ocr-file').addEventListener('change', function(){
-  var file = this.files[0];
-  if(!file) return;
-  this.value = '';
-  var spinner = document.getElementById('ocr-spinner');
-  spinner.style.display = 'inline-block';
+(function(){
+  var ocrStream = null;
+  var ocrTimer  = null;
+  var ocrPending = null;   // {sp, fs} 確認待ち
+  var tesseractReady = false;
+  var tesseractWorker = null;
 
-  var reader = new FileReader();
-  reader.onload = function(e){
-    var b64 = e.target.result.split(',')[1];
-    fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
-      body: JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:200,
-        messages:[{
-          role:'user',
-          content:[
-            {type:'image',source:{type:'base64',media_type:file.type||'image/jpeg',data:b64}},
-            {type:'text',text:'この測量機器の液晶画面に表示されている数値を読み取ってください。画面には複数行の数値があります。上から2行目と3行目の数値（小数点付き）のみを抽出し、必ずJSON形式 {"sp": 数値, "fs": 数値} だけで回答してください。他の文字は一切不要です。数値が読み取れない場合は{"sp":null,"fs":null}。'}
-          ]
-        }]
-      })
-    })
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      spinner.style.display='none';
-      var text = (d.content&&d.content[0]&&d.content[0].text)||'';
-      try{
-        var clean = text.replace(/```json|```/g,'').trim();
-        var obj = JSON.parse(clean);
-        if(obj.sp !== null && obj.sp !== undefined){
-          var spVal = parseFloat(obj.sp).toFixed(3);
-          document.getElementById('sp').value = spVal;
-          document.getElementById('sp-display').textContent = spVal;
-          document.getElementById('sp-display').classList.remove('empty');
-          numpadBuf = String(obj.sp);
-        }
-        if(obj.fs !== null && obj.fs !== undefined){
-          var fsVal = parseFloat(obj.fs).toFixed(3);
-          document.getElementById('fs').value = fsVal;
-          document.getElementById('fs-display').textContent = fsVal;
-          document.getElementById('fs-display').classList.remove('empty');
-        }
-        /* 読み取り結果を一時表示 */
-        var btn = document.querySelector('.ocr-btn');
-        btn.style.color='var(--pl)';
-        btn.querySelector('span:not(.ocr-spinner)') && (btn.lastChild.textContent=' ✓ SP:'+obj.sp+'  FS:'+obj.fs);
-        setTimeout(function(){
-          btn.lastChild.textContent=' TS画面を撮影してSP・FS自動入力';
-        },3000);
-      }catch(ex){
-        alert('読み取り失敗。画面全体が映るように撮影してください。\n'+text);
+  /* Tesseract.js を CDN から非同期ロード（Service Workerでキャッシュ） */
+  function loadTesseract(cb){
+    if(window.Tesseract){ cb(); return; }
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload = function(){ cb(); };
+    s.onerror = function(){ alert('Tesseract.jsの読み込みに失敗しました。オンラインで一度開いてください。'); };
+    document.head.appendChild(s);
+  }
+
+  function initWorker(cb){
+    if(tesseractWorker){ cb(); return; }
+    loadTesseract(function(){
+      Tesseract.createWorker('eng', 1, {
+        workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
+        corePath:   'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js',
+        langPath:   'https://cdn.jsdelivr.net/npm/tesseract.js-data@4.0.0/eng/',
+        cacheMethod: 'write',
+        logger: function(){}
+      }).then(function(w){
+        tesseractWorker = w;
+        tesseractReady  = true;
+        cb();
+      }).catch(function(e){
+        alert('OCRエンジン初期化エラー: ' + e.message);
+      });
+    });
+  }
+
+  /* ガイド枠描画 */
+  function drawGuide(){
+    var cv  = document.getElementById('ocr-guide');
+    var vid = document.getElementById('ocr-video');
+    if(!cv || !vid) return;
+    var W = vid.clientWidth  || window.innerWidth;
+    var H = vid.clientHeight || window.innerHeight;
+    cv.width  = W;
+    cv.height = H;
+    var ctx = cv.getContext('2d');
+    ctx.clearRect(0,0,W,H);
+    /* 液晶枠：画面中央やや上、横80%・縦28% */
+    var gx = W*0.10, gy = H*0.28, gw = W*0.80, gh = H*0.28;
+    /* 暗幕 */
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(0,0,W,H);
+    /* 切り抜き */
+    ctx.clearRect(gx,gy,gw,gh);
+    /* 枠線 */
+    ctx.strokeStyle = '#4f8ef7';
+    ctx.lineWidth   = 2.5;
+    ctx.strokeRect(gx,gy,gw,gh);
+    /* 四隅マーカー */
+    var cs = 18;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth   = 3;
+    [[gx,gy],[gx+gw,gy],[gx,gy+gh],[gx+gw,gy+gh]].forEach(function(p){
+      var sx = p[0]===gx ? 1 : -1;
+      var sy = p[1]===gy ? 1 : -1;
+      ctx.beginPath();
+      ctx.moveTo(p[0]+sx*cs, p[1]);
+      ctx.lineTo(p[0], p[1]);
+      ctx.lineTo(p[0], p[1]+sy*cs);
+      ctx.stroke();
+    });
+    /* SP行・FS行のROIヒント */
+    var rowH = gh / 3;
+    ctx.strokeStyle = 'rgba(255,220,0,0.5)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4,4]);
+    /* 2行目（水平距離=SP） */
+    ctx.strokeRect(gx + gw*0.55, gy + rowH*0.9, gw*0.38, rowH*0.85);
+    /* 3行目（高低差=FS） */
+    ctx.strokeRect(gx + gw*0.55, gy + rowH*1.9, gw*0.38, rowH*0.85);
+    ctx.setLineDash([]);
+    /* ラベル */
+    ctx.fillStyle = 'rgba(255,220,0,0.85)';
+    ctx.font = 'bold 11px -apple-system';
+    ctx.fillText('SP', gx + gw*0.56, gy + rowH*1.05 + 11);
+    ctx.fillText('FS', gx + gw*0.56, gy + rowH*2.05 + 11);
+  }
+
+  /* キャンバスから液晶ROI切り出し → OCR */
+  function captureAndOcr(){
+    var vid = document.getElementById('ocr-video');
+    if(!vid || !vid.videoWidth) return;
+    var W = vid.videoWidth, H = vid.videoHeight;
+
+    /* 画面サイズ比でROI計算（ガイド枠と同じ比率） */
+    var gx = Math.round(W*0.10), gy = Math.round(H*0.28);
+    var gw = Math.round(W*0.80), gh = Math.round(H*0.28);
+    var rowH = gh / 3;
+
+    /* SP行（水平距離）: 右55%〜93%、行2 */
+    var spX = gx + Math.round(gw*0.52), spY = gy + Math.round(rowH*0.88);
+    var spW = Math.round(gw*0.41),      spH = Math.round(rowH*0.88);
+    /* FS行（高低差）: 右55%〜93%、行3 */
+    var fsX = gx + Math.round(gw*0.52), fsY = gy + Math.round(rowH*1.88);
+    var fsW = Math.round(gw*0.41),      fsH = Math.round(rowH*0.88);
+
+    function cropToCanvas(sx,sy,sw,sh){
+      var c = document.createElement('canvas');
+      c.width = sw*2; c.height = sh*2;
+      var ctx = c.getContext('2d');
+      /* 2倍拡大でOCR精度向上 */
+      ctx.drawImage(vid, sx,sy,sw,sh, 0,0,sw*2,sh*2);
+      /* コントラスト強調：グレースケール+二値化 */
+      var id = ctx.getImageData(0,0,c.width,c.height);
+      var d  = id.data;
+      for(var i=0;i<d.length;i+=4){
+        var gray = 0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+        var v    = gray < 140 ? 0 : 255;
+        d[i]=d[i+1]=d[i+2]=v;
       }
-    })
-    .catch(function(err){
-      spinner.style.display='none';
-      alert('通信エラー: '+err.message);
+      ctx.putImageData(id,0,0);
+      return c;
+    }
+
+    var spCanvas = cropToCanvas(spX,spY,spW,spH);
+    var fsCanvas = cropToCanvas(fsX,fsY,fsW,fsH);
+
+    function runOcr(canvas){
+      return tesseractWorker.recognize(canvas, {tessedit_char_whitelist:'0123456789.-'})
+        .then(function(r){ return r.data.text.trim().replace(/[^0-9.\-]/g,''); });
+    }
+
+    Promise.all([runOcr(spCanvas), runOcr(fsCanvas)])
+      .then(function(vals){
+        var spRaw = vals[0], fsRaw = vals[1];
+        var spNum = parseFloat(spRaw), fsNum = parseFloat(fsRaw);
+        if(!isNaN(spNum) && !isNaN(fsNum)){
+          var spV = spNum.toFixed(3), fsV = fsNum.toFixed(3);
+          document.getElementById('ocr-status').style.display='none';
+          var rb  = document.getElementById('ocr-result-bar');
+          rb.style.display = 'block';
+          document.getElementById('ocr-result-txt').textContent =
+            '水平距離（SP）: '+spV+'  高低差（FS）: '+fsV;
+          ocrPending = {sp:spV, fs:fsV};
+          document.getElementById('ocr-confirm-btn').style.display='';
+          /* 2秒後に再スキャン（値が変わっていなければ自動確定） */
+          if(ocrTimer) clearTimeout(ocrTimer);
+          ocrTimer = setTimeout(function(){
+            captureAndOcr();
+          }, 2000);
+        } else {
+          document.getElementById('ocr-status').textContent = '数値を検出中…';
+          document.getElementById('ocr-status').style.display='';
+          if(ocrTimer) clearTimeout(ocrTimer);
+          ocrTimer = setTimeout(captureAndOcr, 1500);
+        }
+      }).catch(function(){
+        if(ocrTimer) clearTimeout(ocrTimer);
+        ocrTimer = setTimeout(captureAndOcr, 2000);
+      });
+  }
+
+  /* モーダルを開く */
+  window.ocrOpen = function(){
+    var overlay = document.getElementById('ocr-overlay');
+    overlay.classList.add('open');
+    document.getElementById('ocr-result-bar').style.display='none';
+    document.getElementById('ocr-confirm-btn').style.display='none';
+    document.getElementById('ocr-status').style.display='';
+    document.getElementById('ocr-status').textContent = '準備中…';
+    ocrPending = null;
+
+    /* カメラ起動 */
+    navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1080} }
+    }).then(function(s){
+      ocrStream = s;
+      var vid = document.getElementById('ocr-video');
+      vid.srcObject = s;
+      vid.onloadedmetadata = function(){
+        vid.play();
+        setTimeout(drawGuide, 100);
+        document.getElementById('ocr-status').textContent = 'TS画面を枠に合わせてください';
+        /* OCRエンジン初期化 → 認識開始 */
+        initWorker(function(){
+          document.getElementById('ocr-status').textContent = 'スキャン中…';
+          if(ocrTimer) clearTimeout(ocrTimer);
+          ocrTimer = setTimeout(captureAndOcr, 800);
+        });
+      };
+    }).catch(function(e){
+      alert('カメラを起動できませんでした: '+e.message);
+      ocrClose();
     });
   };
-  reader.readAsDataURL(file);
-});
 
-function ocrCapture(){
-  document.getElementById('ocr-file').click();
-}
+  /* モーダルを閉じる */
+  window.ocrClose = function(){
+    if(ocrTimer){ clearTimeout(ocrTimer); ocrTimer=null; }
+    if(ocrStream){ ocrStream.getTracks().forEach(function(t){t.stop();}); ocrStream=null; }
+    document.getElementById('ocr-overlay').classList.remove('open');
+    document.getElementById('ocr-video').srcObject = null;
+  };
+
+  /* 確定 */
+  window.ocrConfirm = function(){
+    if(!ocrPending) return;
+    var sp = ocrPending.sp, fs = ocrPending.fs;
+    document.getElementById('sp').value = sp;
+    document.getElementById('sp-display').textContent = sp;
+    document.getElementById('sp-display').classList.remove('empty');
+    document.getElementById('fs').value = fs;
+    document.getElementById('fs-display').textContent = fs;
+    document.getElementById('fs-display').classList.remove('empty');
+    numpadBuf = String(sp);
+    /* ボタンに結果表示 */
+    var txt = document.getElementById('ocr-btn-txt');
+    txt.textContent = '✓ SP:'+sp+'  FS:'+fs;
+    setTimeout(function(){ txt.textContent='📷 TS画面をカメラで自動入力'; },4000);
+    ocrClose();
+  };
+
+  /* ガイド枠：画面リサイズ時に再描画 */
+  window.addEventListener('resize', function(){
+    if(document.getElementById('ocr-overlay').classList.contains('open')) drawGuide();
+  });
+})();
 
 /* ══════════════════════════════════════════════
    断面履歴（グラフタブ）
@@ -1678,15 +1863,20 @@ refreshSectionSel();
     regs.forEach(r=>r.unregister());
   });
   caches.keys().then(keys=>{
-    keys.filter(k=>k!=='level-survey-v3').forEach(k=>caches.delete(k));
+    keys.filter(k=>k!=='level-survey-v4').forEach(k=>caches.delete(k));
   });
   /* SW スクリプトを文字列で定義してBlobURLに変換 */
-  const CACHE='level-survey-v3';
+  const CACHE='level-survey-v4';
   const swCode=`
 const CACHE='${CACHE}';
 self.addEventListener('install',e=>{
   e.waitUntil(
-    caches.open(CACHE).then(c=>c.addAll([location.href.replace(/\\/[^/]*$/,'/')||'/']))
+    caches.open(CACHE).then(c=>c.addAll([
+      location.href.replace(/\\/[^/]*$/,'/')||'/',
+      'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
+      'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
+      'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js'
+    ]).catch(function(){})  )
       .catch(()=>{})
   );
   self.skipWaiting();
