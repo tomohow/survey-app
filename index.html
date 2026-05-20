@@ -453,8 +453,16 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
     <div class="card">
       <div class="card-lbl">🔩 BM設定</div>
       <div class="fields">
-        <div><div class="flbl">BM測点名</div><input id="bmName" type="text" placeholder="例：BM.1"></div>
-        <div><div class="flbl">初期GH（標高）</div><input id="initGH" type="text" inputmode="url" pattern="-?[0-9]*\.?[0-9]*" placeholder="例：10.000" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"></div>
+        <div>
+          <div class="flbl">BM測点名</div>
+          <div class="pt-suggest" id="bm-suggest" style="margin-bottom:4px;"></div>
+          <input id="bmName" type="text" placeholder="例：BM.1" oninput="filterBmSuggest(this.value)">
+        </div>
+        <div>
+          <div class="flbl">初期GH（標高）</div>
+          <div class="num-fake empty" id="initGH-display" onclick="openNumpadGH()" style="font-size:15px;">例：10.000</div>
+          <input type="hidden" id="initGH" value="">
+        </div>
       </div>
     </div>
     <button class="btn btn-p" onclick="setInit()">測定開始</button>
@@ -626,6 +634,13 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
           </label>
           <button class="btn btn-d" id="dp-clear-btn">🗑 削除</button>
         </div>
+        <div class="row2" style="gap:8px;margin-top:8px;">
+          <button class="btn btn-s" onclick="dpExportData()" style="font-size:12px;">📤 データ書出</button>
+          <label class="btn btn-s" style="text-align:center;display:block;font-size:12px;cursor:pointer;">
+            📥 データ読込
+            <input type="file" id="dp-import-input" accept=".json" style="display:none">
+          </label>
+        </div>
       </div>
     </div>
 
@@ -679,43 +694,7 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
 </div>
 
 <script>
-/* ── 数値入力ヘルパー（iPhone対応） ── */
-(function(){
-  /* 対象フィールドID */
-  const numFields=['initGH']; /* sp/fsはテンキーパッドで入力 */
-
-  /* 入力中：数値として有効な文字以外を除去 */
-  function sanitize(el){
-    const s=el.value;
-    /* 許可：先頭のマイナス、数字、小数点1つのみ */
-    let out=s.replace(/[^0-9.\-]/g,'');
-    /* マイナスは先頭のみ許可 */
-    out=out.replace(/(?!^)-/g,'');
-    /* 小数点は最初の1つだけ */
-    const parts=out.split('.');
-    if(parts.length>2) out=parts[0]+'.'+parts.slice(1).join('');
-    if(el.value!==out) el.value=out;
-  }
-
-  /* blur時：値があれば3桁フォーマット */
-  function autoFmt(el){
-    const v=parseFloat(el.value);
-    if(!isNaN(v)) el.value=v.toFixed(3);
-  }
-
-  document.addEventListener('DOMContentLoaded',function(){},false);
-  /* DOMが既に準備済みの場合も考慮して即時実行 */
-  function attach(){
-    numFields.forEach(id=>{
-      const el=document.getElementById(id);
-      if(!el) return;
-      el.addEventListener('input',()=>sanitize(el));
-      el.addEventListener('blur',()=>autoFmt(el));
-    });
-  }
-  /* scriptは末尾なのでDOMは既存 */
-  attach();
-})();
+/* ── 数値入力ヘルパー（不要：initGHはテンキーパッド対応） ── */
 
 let data=[], baseIH=null, pendingIH=null, pendingRow=null;
 
@@ -1102,36 +1081,121 @@ function loadAndRender(){
 /* IDB open後に読み込む（openが非同期のため少し待つ） */
 setTimeout(loadAndRender, 80);
 
-/* ── 河川環境記録 ── */
 /* ── 定点観測 ── */
 (function(){
-  var baseImg    = null;   // DataURL
-  var baseDate   = null;   // 撮影日文字列
-  var stream     = null;   // MediaStream
-  var history    = [];     // [{dataUrl, date}]
+  var baseImg    = null;
+  var baseDate   = null;
+  var stream     = null;
+  var history    = [];
   var gridOn     = false;
+  var dpIdb      = null;
 
-  /* ローカルストレージから復元 */
-  function dpLoad(){
+  /* IndexedDB 初期化 */
+  function openDpIDB(cb){
+    var req = indexedDB.open('levelSurveyDP', 1);
+    req.onupgradeneeded = function(e){
+      var db = e.target.result;
+      if(!db.objectStoreNames.contains('photos')) db.createObjectStore('photos', {keyPath:'id'});
+      if(!db.objectStoreNames.contains('meta'))   db.createObjectStore('meta');
+    };
+    req.onsuccess = function(e){ dpIdb = e.target.result; cb && cb(); };
+    req.onerror   = function(){ cb && cb(); };
+  }
+
+  function dpIdbSaveMeta(obj, cb){
+    if(!dpIdb){cb&&cb();return;}
     try{
-      var s = localStorage.getItem('lvl4_dp');
-      if(!s) return;
-      var obj = JSON.parse(s);
-      baseImg  = obj.baseImg  || null;
-      baseDate = obj.baseDate || null;
-      history  = obj.history  || [];
-    }catch(e){}
-    dpRender();
-    dpHistRender();
+      var tx = dpIdb.transaction('meta','readwrite');
+      tx.objectStore('meta').put(obj,'main');
+      tx.oncomplete = function(){ cb&&cb(); };
+    }catch(e){ cb&&cb(); }
+  }
+  function dpIdbLoadMeta(cb){
+    if(!dpIdb){cb(null);return;}
+    try{
+      var tx = dpIdb.transaction('meta','readonly');
+      var req2 = tx.objectStore('meta').get('main');
+      req2.onsuccess = function(){ cb(req2.result||null); };
+      req2.onerror   = function(){ cb(null); };
+    }catch(e){ cb(null); }
+  }
+  function dpIdbSavePhotos(arr, cb){
+    if(!dpIdb){cb&&cb();return;}
+    try{
+      var tx = dpIdb.transaction('photos','readwrite');
+      var store = tx.objectStore('photos');
+      store.clear();
+      arr.forEach(function(item){ store.put(item); });
+      tx.oncomplete = function(){ cb&&cb(); };
+    }catch(e){ cb&&cb(); }
+  }
+  function dpIdbLoadPhotos(cb){
+    if(!dpIdb){cb([]);return;}
+    try{
+      var tx = dpIdb.transaction('photos','readonly');
+      var req2 = tx.objectStore('photos').getAll();
+      req2.onsuccess = function(){
+        var items = (req2.result||[]).sort(function(a,b){ return a.id-b.id; });
+        cb(items);
+      };
+      req2.onerror = function(){ cb([]); };
+    }catch(e){ cb([]); }
   }
 
   function dpSave(){
-    try{
-      localStorage.setItem('lvl4_dp', JSON.stringify({
-        baseImg:baseImg, baseDate:baseDate, history:history
-      }));
-    }catch(e){ alert('容量不足のため保存できませんでした。履歴を削除してください。'); }
+    var meta = {baseImg:baseImg, baseDate:baseDate};
+    dpIdbSaveMeta(meta);
+    /* historyをIDつきで保存 */
+    var photos = history.map(function(item,i){ return {id:i, dataUrl:item.dataUrl, date:item.date}; });
+    dpIdbSavePhotos(photos);
+    /* fallback: localStorageには軽量メタのみ */
+    try{ localStorage.setItem('lvl4_dp_meta', JSON.stringify({baseDate:baseDate})); }catch(e){}
   }
+
+  function dpLoad(){
+    openDpIDB(function(){
+      dpIdbLoadMeta(function(meta){
+        dpIdbLoadPhotos(function(photos){
+          if(meta){ baseImg=meta.baseImg||null; baseDate=meta.baseDate||null; }
+          history = photos.map(function(p){ return {dataUrl:p.dataUrl, date:p.date}; });
+          dpRender();
+          dpHistRender();
+        });
+      });
+    });
+  }
+
+  /* エクスポート */
+  window.dpExportData = function(){
+    var obj = { baseImg:baseImg, baseDate:baseDate, history:history, exportedAt: new Date().toLocaleString('ja-JP') };
+    var blob = new Blob([JSON.stringify(obj)],{type:'application/json'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'dp_data_' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+  };
+
+  /* インポート */
+  document.getElementById('dp-import-input').addEventListener('change', function(){
+    var file = this.files[0]; if(!file) return; this.value='';
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try{
+        var obj = JSON.parse(e.target.result);
+        if(obj.baseImg) baseImg = obj.baseImg;
+        if(obj.baseDate) baseDate = obj.baseDate;
+        if(obj.history && Array.isArray(obj.history)){
+          /* 既存と結合して重複除去（日時文字列で判定） */
+          var existing = new Set(history.map(function(h){ return h.date; }));
+          obj.history.forEach(function(h){ if(!existing.has(h.date)) history.unshift(h); });
+          history.sort(function(a,b){ return b.date.localeCompare(a.date); });
+        }
+        dpSave(); dpRender(); dpHistRender();
+        alert('読み込み完了：履歴 '+history.length+'件');
+      }catch(ex){ alert('読み込みエラー: '+ex.message); }
+    };
+    reader.readAsText(file);
+  });
 
   /* UI切替 */
   function dpRender(){
@@ -1170,19 +1234,15 @@ setTimeout(loadAndRender, 80);
   function drawGrid(){
     var cv = document.getElementById('dp-grid');
     var ctx = cv.getContext('2d');
-    var W = cv.clientWidth;
-    var H = cv.clientHeight;
+    var W = cv.clientWidth; var H = cv.clientHeight;
     cv.width = W; cv.height = H;
     ctx.clearRect(0,0,W,H);
     if(!gridOn) return;
-    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-    ctx.lineWidth = 0.8;
-    /* 3x3グリッド */
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 0.8;
     for(var i=1;i<3;i++){
       ctx.beginPath(); ctx.moveTo(W*i/3,0); ctx.lineTo(W*i/3,H); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(0,H*i/3); ctx.lineTo(W,H*i/3); ctx.stroke();
     }
-    /* 対角線（構図補助） */
     ctx.strokeStyle = 'rgba(255,255,255,0.12)';
     ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(W,H); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(W,0); ctx.lineTo(0,H); ctx.stroke();
@@ -1195,17 +1255,12 @@ setTimeout(loadAndRender, 80);
     reader.onload = function(e){
       baseImg  = e.target.result;
       baseDate = new Date().toLocaleDateString('ja-JP');
-      dpSave();
-      dpRender();
+      dpSave(); dpRender();
     };
     reader.readAsDataURL(file);
   }
-  document.getElementById('dp-file-input').addEventListener('change', function(){
-    onFileSelect(this.files[0]);
-  });
-  document.getElementById('dp-file-input2').addEventListener('change', function(){
-    onFileSelect(this.files[0]);
-  });
+  document.getElementById('dp-file-input').addEventListener('change', function(){ onFileSelect(this.files[0]); });
+  document.getElementById('dp-file-input2').addEventListener('change', function(){ onFileSelect(this.files[0]); });
 
   /* カメラ起動 */
   var cameraBtn  = document.getElementById('dp-camera-btn');
@@ -1214,46 +1269,29 @@ setTimeout(loadAndRender, 80);
 
   cameraBtn.addEventListener('click', function(){
     if(stream){
-      /* カメラ停止 */
       stream.getTracks().forEach(function(t){ t.stop(); });
-      stream = null;
-      video.style.display = 'none';
-      cameraBtn.textContent = '📷 カメラ起動';
-      captureBtn.style.display = 'none';
+      stream = null; video.style.display = 'none';
+      cameraBtn.textContent = '📷 カメラ起動'; captureBtn.style.display = 'none';
     } else {
-      /* カメラ起動 */
-      var constraints = {
-        video:{ facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1080} }
-      };
+      var constraints = { video:{ facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1080} } };
       navigator.mediaDevices.getUserMedia(constraints).then(function(s){
-        stream = s;
-        video.srcObject = s;
-        video.style.display = 'block';
-        cameraBtn.textContent = '⏹ カメラ停止';
-        captureBtn.style.display = '';
+        stream = s; video.srcObject = s; video.style.display = 'block';
+        cameraBtn.textContent = '⏹ カメラ停止'; captureBtn.style.display = '';
         drawGrid();
-      }).catch(function(err){
-        alert('カメラを起動できませんでした: ' + err.message);
-      });
+      }).catch(function(err){ alert('カメラを起動できませんでした: ' + err.message); });
     }
   });
 
   /* 撮影・保存 */
   captureBtn.addEventListener('click', function(){
     if(!stream) return;
-    /* videoフレームをcanvasに描画して保存 */
     var cv = document.createElement('canvas');
-    cv.width  = video.videoWidth;
-    cv.height = video.videoHeight;
-    var ctx = cv.getContext('2d');
-    ctx.drawImage(video, 0, 0);
+    cv.width = video.videoWidth; cv.height = video.videoHeight;
+    var ctx = cv.getContext('2d'); ctx.drawImage(video, 0, 0);
     var dataUrl = cv.toDataURL('image/jpeg', 0.82);
     var date = new Date().toLocaleString('ja-JP');
     history.unshift({ dataUrl:dataUrl, date:date });
-    /* 最大5件保存 */
-    if(history.length > 5) history = history.slice(0,5);
-    dpSave();
-    dpHistRender();
+    dpSave(); dpHistRender();
     /* フラッシュ演出 */
     var flash = document.createElement('div');
     flash.style.cssText = 'position:absolute;inset:0;background:#fff;opacity:0.8;z-index:99;pointer-events:none;transition:opacity .3s';
@@ -1277,29 +1315,30 @@ setTimeout(loadAndRender, 80);
     wrap.style.display='block';
     list.innerHTML='';
     history.forEach(function(item, idx){
-      var div = document.createElement('div');
-      div.className='dp-hist-item';
-      var img = document.createElement('img');
-      img.className='dp-hist-thumb'; img.src=item.dataUrl;
-      var info = document.createElement('div');
-      info.className='dp-hist-info';
-      var d = document.createElement('div');
-      d.className='dp-hist-date'; d.textContent=item.date;
-      info.appendChild(d);
-      var del = document.createElement('button');
-      del.className='dp-hist-del'; del.textContent='削除';
-      del.addEventListener('click', function(e){
+      var div = document.createElement('div'); div.className='dp-hist-item';
+      var img = document.createElement('img'); img.className='dp-hist-thumb'; img.src=item.dataUrl;
+      var info = document.createElement('div'); info.className='dp-hist-info';
+      var d = document.createElement('div'); d.className='dp-hist-date'; d.textContent=item.date;
+      /* ダウンロードボタン */
+      var dlBtn = document.createElement('button');
+      dlBtn.style.cssText='font-size:10px;color:var(--ac);background:transparent;border:none;padding:2px 6px;cursor:pointer;';
+      dlBtn.textContent='💾 保存';
+      dlBtn.addEventListener('click', function(e){
         e.stopPropagation();
-        if(confirm('この記録を削除しますか？')){
-          history.splice(idx,1); dpSave(); dpHistRender();
-        }
-      });
-      /* タップで画像DL */
-      img.addEventListener('click', function(){
         var a = document.createElement('a');
         a.href = item.dataUrl;
         a.download = 'survey_' + item.date.replace(/[\/\s:]/g,'-') + '.jpg';
         a.click();
+      });
+      info.appendChild(d); info.appendChild(dlBtn);
+      var del = document.createElement('button'); del.className='dp-hist-del'; del.textContent='削除';
+      del.addEventListener('click', function(e){
+        e.stopPropagation();
+        if(confirm('この記録を削除しますか？')){ history.splice(idx,1); dpSave(); dpHistRender(); }
+      });
+      img.addEventListener('click', function(){
+        /* サムネイルタップで大きく表示 */
+        var a = document.createElement('a'); a.href=item.dataUrl; a.download='survey_'+item.date.replace(/[\/\s:]/g,'-')+'.jpg'; a.click();
       });
       div.appendChild(img); div.appendChild(info); div.appendChild(del);
       list.appendChild(div);
@@ -1308,10 +1347,7 @@ setTimeout(loadAndRender, 80);
 
   /* タブ切替時にグリッド再描画 */
   var origSwitch = window.switchTab;
-  window.switchTab = function(n){
-    origSwitch(n);
-    if(n==='env'){ setTimeout(drawGrid,50); }
-  };
+  window.switchTab = function(n){ origSwitch(n); if(n==='env'){ setTimeout(drawGrid,50); } };
 
   setTimeout(dpLoad, 150);
 })();
@@ -1321,6 +1357,7 @@ setTimeout(loadAndRender, 80);
 /* ══════════════════════════════════════════════
    測点候補リスト
 ══════════════════════════════════════════════ */
+/* ③ No./TP.を除去 — 測点候補リスト */
 var POINT_LIST = [
   '堤内肩','堤外肩','肩','尻','WLH','川中',
   'エルボーTOP','取水口TOP','H鋼地山','格納箱芯',
@@ -1329,15 +1366,59 @@ var POINT_LIST = [
   '橋上流右岸地覆','橋上流左岸地覆',
   '橋中央BM','局舎踊り場'
 ];
-/* No.1〜20, TP.1〜10 を先頭に */
-(function(){
-  var extras = [];
-  for(var i=1;i<=20;i++) extras.push('No.'+i);
-  for(var i=1;i<=10;i++) extras.push('TP.'+i);
-  POINT_LIST = extras.concat(POINT_LIST);
-})();
+
+/* BM候補リスト */
+var BM_LIST = ['BM.1','BM.2','BM.3','BM.4','BM.5','BM.A','BM.B','BM-1','BM-2','KBM.1','KBM.2'];
+
+function filterBmSuggest(q){
+  q = (q||'').trim().toLowerCase();
+  var filtered = q==='' ? BM_LIST : BM_LIST.filter(function(p){ return p.toLowerCase().indexOf(q)!==-1; });
+  renderBmSuggest(filtered);
+}
+function renderBmSuggest(list){
+  var wrap = document.getElementById('bm-suggest');
+  if(!wrap) return;
+  wrap.innerHTML='';
+  var cur = document.getElementById('bmName').value.trim();
+  list.forEach(function(p){
+    var btn=document.createElement('button');
+    btn.className='pt-chip'+(p===cur?' selected':'');
+    btn.textContent=p;
+    btn.addEventListener('click',function(){
+      document.getElementById('bmName').value=p;
+      renderBmSuggest(list);
+    });
+    wrap.appendChild(btn);
+  });
+}
+renderBmSuggest(BM_LIST);
 
 var suggestAll = POINT_LIST.slice();
+
+/* ① initGH用テンキーパッド */
+var numpadGHBuf = '';
+function openNumpadGH(){
+  var cur = document.getElementById('initGH').value;
+  numpadGHBuf = cur || '';
+  /* 共用テンキーパッドをGH用に開く */
+  numpadTarget = 'initGH_internal';
+  numpadBuf = numpadGHBuf;
+  updateNumpadDisplay();
+  document.getElementById('numpad-lbl').textContent = '初期GH（標高）';
+  /* OKボタン押下時のコールバックを上書き */
+  window._numpadOkOverride = function(){
+    var val = numpadBuf;
+    var parsed = parseFloat(val);
+    var formatted = isNaN(parsed) ? '' : parsed.toFixed(3);
+    document.getElementById('initGH').value = formatted;
+    var disp = document.getElementById('initGH-display');
+    if(formatted===''){ disp.textContent='例：10.000'; disp.classList.add('empty'); }
+    else { disp.textContent=formatted; disp.classList.remove('empty'); }
+    window._numpadOkOverride = null;
+    closeNumpad();
+  };
+  document.getElementById('numpad-overlay').classList.add('open');
+}
 
 function filterSuggest(q){
   q = q.trim().toLowerCase();
@@ -1424,6 +1505,7 @@ function commitNumpad(){
 }
 
 function nkOk(){
+  if(window._numpadOkOverride){ window._numpadOkOverride(); return; }
   commitNumpad();
   closeNumpad();
 }
@@ -1482,7 +1564,7 @@ document.getElementById('ocr-file').addEventListener('change', function(){
     var b64 = e.target.result.split(',')[1];
     fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
       body: JSON.stringify({
         model:'claude-sonnet-4-20250514',
         max_tokens:200,
