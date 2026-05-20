@@ -585,9 +585,9 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
     <video id="ocr-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;"></video>
     <!-- ガイド枠オーバーレイ -->
     <canvas id="ocr-guide" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></canvas>
-    <!-- 状態表示 -->
-    <div style="position:absolute;bottom:140px;left:0;right:0;text-align:center;z-index:10;">
-      <span id="ocr-status" style="background:rgba(0,0,0,.65);color:#fff;font-size:13px;padding:6px 18px;border-radius:20px;">準備中…</span>
+    <!-- 状態表示（上部に移動：結果バーと重ならない） -->
+    <div style="position:absolute;top:env(safe-area-inset-top,12px);left:0;right:0;text-align:center;z-index:11;padding-top:48px;">
+      <span id="ocr-status" style="background:rgba(0,0,0,.75);color:#fff;font-size:13px;padding:6px 18px;border-radius:20px;max-width:90%;display:inline-block;">準備中…</span>
     </div>
     <!-- 結果プレビュー -->
     <div id="ocr-result-bar" style="display:none;position:absolute;bottom:140px;left:16px;right:16px;background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.4);border-radius:12px;padding:10px 16px;text-align:center;z-index:10;">
@@ -1587,30 +1587,43 @@ function gpsPlace(){
   /* Tesseract.js を CDN から非同期ロード（Service Workerでキャッシュ） */
   function loadTesseract(cb){
     if(window.Tesseract){ cb(); return; }
+    var statusEl = document.getElementById('ocr-status');
+    if(statusEl) statusEl.textContent = 'OCRライブラリ読込中…';
     var s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-    s.onload = function(){ cb(); };
-    s.onerror = function(){ alert('Tesseract.jsの読み込みに失敗しました。オンラインで一度開いてください。'); };
+    s.onload  = function(){ cb(); };
+    s.onerror = function(){
+      if(statusEl) statusEl.textContent = 'ライブラリ読込失敗。オンラインで開いてください。';
+    };
     document.head.appendChild(s);
   }
 
   function initWorker(cb){
     if(tesseractWorker){ cb(); return; }
     loadTesseract(function(){
-      /* eng のみでロード（jpnデータは重く失敗しやすいため使わない）
-         ラベル認識は正規表現フォールバックで対応 */
+      var statusEl = document.getElementById('ocr-status');
+      if(statusEl) statusEl.textContent = 'OCRエンジン初期化中…';
+      /* eng のみでロード */
       Tesseract.createWorker('eng', 1, {
         workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
         corePath:   'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js',
         langPath:   'https://cdn.jsdelivr.net/npm/tesseract.js-data@4.0.0/eng/',
         cacheMethod: 'write',
-        logger: function(){}
+        logger: function(m){
+          /* 初期化進捗をステータスに表示 */
+          if(m && m.status && statusEl){
+            var pct = m.progress ? Math.round(m.progress*100) : 0;
+            statusEl.textContent = m.status + (pct>0?' '+pct+'%':'') + '…';
+          }
+        }
       }).then(function(w){
         tesseractWorker = w;
         tesseractReady  = true;
         cb();
       }).catch(function(e){
-        alert('OCRエンジン初期化エラー: ' + e.message);
+        /* alertで止めず、ステータスに表示してリトライ可能にする */
+        if(statusEl) statusEl.textContent = 'エンジンエラー。再度お試しください。';
+        tesseractWorker = null;  /* 次回再試行できるようリセット */
       });
     });
   }
@@ -1882,8 +1895,9 @@ function gpsPlace(){
     overlay.classList.add('open');
     document.getElementById('ocr-result-bar').style.display='none';
     document.getElementById('ocr-confirm-btn').style.display='none';
-    document.getElementById('ocr-status').style.display='';
-    document.getElementById('ocr-status').textContent = '準備中…';
+    var statusEl = document.getElementById('ocr-status');
+    statusEl.style.display='';
+    statusEl.textContent = 'カメラ起動中…';
     ocrPending = null;
 
     /* カメラ起動 */
@@ -1893,20 +1907,35 @@ function gpsPlace(){
       ocrStream = s;
       var vid = document.getElementById('ocr-video');
       vid.srcObject = s;
-      vid.onloadedmetadata = function(){
-        vid.play();
-        setTimeout(drawGuide, 100);
-        document.getElementById('ocr-status').textContent = 'TS画面を枠に合わせてください';
-        /* OCRエンジン初期化 → 認識開始 */
+
+      /* iOS Safari対策：onloadedmetadata が来ない場合のタイムアウトポーリング */
+      var started = false;
+      function startOcr(){
+        if(started) return;
+        started = true;
+        drawGuide();
+        statusEl.textContent = 'OCRエンジン読込中…';
         initWorker(function(){
-          document.getElementById('ocr-status').textContent = 'スキャン中…';
+          statusEl.textContent = '読み取り中…';
           if(ocrTimer) clearTimeout(ocrTimer);
           ocrTimer = setTimeout(captureAndOcr, 800);
         });
-      };
+      }
+
+      vid.onloadedmetadata = function(){ vid.play().then(function(){ setTimeout(startOcr, 200); }).catch(startOcr); };
+      vid.oncanplay        = function(){ setTimeout(startOcr, 200); };  /* iOS追加イベント */
+
+      /* 3秒待っても発火しない場合は強制スタート */
+      setTimeout(function(){
+        if(!started){
+          vid.play().catch(function(){});
+          startOcr();
+        }
+      }, 3000);
+
     }).catch(function(e){
-      alert('カメラを起動できませんでした: '+e.message);
-      ocrClose();
+      statusEl.textContent = 'カメラエラー: ' + e.message;
+      setTimeout(ocrClose, 3000);
     });
   };
 
