@@ -1603,13 +1603,10 @@ function gpsPlace(){
     loadTesseract(function(){
       var statusEl = document.getElementById('ocr-status');
       if(statusEl) statusEl.textContent = 'OCRエンジン準備中…';
-      Tesseract.createWorker('eng', 1, {
-        workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
-        corePath:   'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js',
-        langPath:   'https://cdn.jsdelivr.net/npm/tesseract.js-data@4.0.0/eng/',
-        cacheMethod: 'none',   /* iOS SafariのキャッシュAPIエラーを回避 */
-        logger:     function(){}
-      }).then(function(w){
+      /* パス指定を一切せずTesseract自身のデフォルトに任せる
+         workerPath/corePath/langPath を指定するとiOS Safariで
+         クロスオリジンWorkerエラーになるため省略 */
+      Tesseract.createWorker('eng').then(function(w){
         tesseractWorker = w;
         tesseractReady  = true;
         if(statusEl) statusEl.textContent = '読み取り中…';
