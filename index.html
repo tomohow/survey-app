@@ -1602,28 +1602,21 @@ function gpsPlace(){
     if(tesseractWorker){ cb(); return; }
     loadTesseract(function(){
       var statusEl = document.getElementById('ocr-status');
-      if(statusEl) statusEl.textContent = 'OCRエンジン初期化中…';
-      /* eng のみでロード */
+      if(statusEl) statusEl.textContent = 'OCRエンジン準備中…';
       Tesseract.createWorker('eng', 1, {
         workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
         corePath:   'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js',
         langPath:   'https://cdn.jsdelivr.net/npm/tesseract.js-data@4.0.0/eng/',
-        cacheMethod: 'write',
-        logger: function(m){
-          /* 初期化進捗をステータスに表示 */
-          if(m && m.status && statusEl){
-            var pct = m.progress ? Math.round(m.progress*100) : 0;
-            statusEl.textContent = m.status + (pct>0?' '+pct+'%':'') + '…';
-          }
-        }
+        cacheMethod: 'none',   /* iOS SafariのキャッシュAPIエラーを回避 */
+        logger:     function(){}
       }).then(function(w){
         tesseractWorker = w;
         tesseractReady  = true;
+        if(statusEl) statusEl.textContent = '読み取り中…';
         cb();
       }).catch(function(e){
-        /* alertで止めず、ステータスに表示してリトライ可能にする */
-        if(statusEl) statusEl.textContent = 'エンジンエラー。再度お試しください。';
-        tesseractWorker = null;  /* 次回再試行できるようリセット */
+        if(statusEl) statusEl.textContent = 'エンジンエラー: ' + (e.message||e);
+        tesseractWorker = null;
       });
     });
   }
@@ -2023,58 +2016,16 @@ refreshSectionSel();
 
 /* ── オフライン対応：Service Worker を動的生成・登録 ── */
 (function(){
-  if(!('serviceWorker' in navigator)) return;
-  /* 古いSWを全て登録解除してからキャッシュ削除 */
-  navigator.serviceWorker.getRegistrations().then(regs=>{
-    regs.forEach(r=>r.unregister());
-  });
-  caches.keys().then(keys=>{
-    keys.filter(k=>k!=='level-survey-v5').forEach(k=>caches.delete(k));
-  });
-  /* SW スクリプトを文字列で定義してBlobURLに変換 */
-  const CACHE='level-survey-v5';
-  const swCode=`
-const CACHE='level-survey-v5';
-self.addEventListener('install',e=>{
-  e.waitUntil(
-    caches.open(CACHE).then(c=>c.addAll([
-      location.href.replace(/\\/[^/]*$/,'/')||'/',
-      'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
-      'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
-      'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js'
-    ]).catch(function(){})  )
-      .catch(()=>{})
-  );
-  self.skipWaiting();
-});
-self.addEventListener('activate',e=>{
-  e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));
-  self.clients.claim();
-});
-self.addEventListener('fetch',e=>{
-  if(e.request.method!=='GET') return;
-  e.respondWith(
-    caches.match(e.request).then(cached=>{
-      const net=fetch(e.request).then(res=>{
-        if(res&&res.status===200){
-          const clone=res.clone();
-          caches.open(CACHE).then(c=>c.put(e.request,clone));
-        }
-        return res;
-      }).catch(()=>null);
-      return cached||net;
-    })
-  );
-});
-`;
-  const blob=new Blob([swCode],{type:'application/javascript'});
-  const url=URL.createObjectURL(blob);
-  navigator.serviceWorker.register(url,{scope:'./'})
-    .then(()=>{
-      /* 初回登録時：このページ自身をキャッシュに追加 */
-      return caches.open(CACHE).then(c=>c.add(location.href));
-    })
-    .catch(()=>{});
+  /* ══ Service Worker を完全廃止 ══
+     古いSWがキャッシュを握り続けるのを防ぐため全登録解除 */
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistrations().then(function(regs){
+      regs.forEach(function(r){ r.unregister(); });
+    });
+    caches.keys().then(function(keys){
+      keys.forEach(function(k){ caches.delete(k); });
+    });
+  }
 })();
 /* ── タブクリックイベント登録 ── */
 (function(){
