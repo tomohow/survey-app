@@ -1629,20 +1629,17 @@ function gpsPlace(){
     cv.height = H;
     var ctx = cv.getContext('2d');
     ctx.clearRect(0,0,W,H);
-
-    /* キャプチャと完全一致：横80%・縦38%（液晶部分のみ） */
-    var gx = W*0.10, gy = H*0.25, gw = W*0.80, gh = H*0.38;
-
+    /* 液晶枠：TSの液晶に合わせた横長（横85%×縦32%） */
+    var gx = W*0.075, gy = H*0.34, gw = W*0.85, gh = H*0.32;
     /* 暗幕 */
-    ctx.fillStyle = 'rgba(0,0,0,0.50)';
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
     ctx.fillRect(0,0,W,H);
+    /* 切り抜き */
     ctx.clearRect(gx,gy,gw,gh);
-
     /* 枠線 */
     ctx.strokeStyle = '#4f8ef7';
     ctx.lineWidth   = 2.5;
     ctx.strokeRect(gx,gy,gw,gh);
-
     /* 四隅マーカー */
     var cs = 18;
     ctx.strokeStyle = '#fff';
@@ -1656,16 +1653,14 @@ function gpsPlace(){
       ctx.lineTo(p[0], p[1]+sy*cs);
       ctx.stroke();
     });
-
-    /* 上部ラベル */
+    /* 説明ラベル */
     ctx.fillStyle = 'rgba(255,220,0,0.90)';
     ctx.font = 'bold 12px -apple-system';
-    ctx.fillText('液晶画面のみをこの枠に収めてください', gx+8, gy-7);
-
-    /* 下部：機種ヒント */
-    ctx.fillStyle = 'rgba(180,220,255,0.75)';
+    ctx.fillText('液晶画面全体をこの枠に収めてください', gx+10, gy-8);
+    /* 機種ヒント */
+    ctx.fillStyle = 'rgba(180,220,255,0.80)';
     ctx.font = '10px -apple-system';
-    ctx.fillText('対応：水平距離/高低差  dHD/dVD  H.DIST/V.DIST', gx+8, gy+gh+13);
+    ctx.fillText('対応：水平距離/高低差  dHD/dVD  H.DIST/V.DIST', gx+10, gy+gh+14);
   }
 
   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1673,20 +1668,21 @@ function gpsPlace(){
      対応機種：
        ① SDR系     ： 水平距離 / 高低差
        ② トプコン系 ： dHD: / dVD:  （タイヘン表示も含む）
-       ③ その他     ： H.DIST / V.DIST
+       ③ その他     ： 数値パターンでフォールバック
      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
   function captureAndOcr(){
     var vid = document.getElementById('ocr-video');
     if(!vid || !vid.videoWidth) return;
     var W = vid.videoWidth, H = vid.videoHeight;
 
-    /* ── ガイド枠内のみキャプチャ ──
-       ガイド枠と同じ座標（drawGuide と必ず一致させること）
-       液晶だけを写す：横80%中央・縦上部40% */
-    var gx = Math.round(W*0.10), gy = Math.round(H*0.25);
-    var gw = Math.round(W*0.80), gh = Math.round(H*0.38);
+    /* ── ガイド枠内をキャプチャ（液晶が映っている想定領域） ── */
+    var gx = Math.round(W*0.075), gy = Math.round(H*0.34);
+    var gw = Math.round(W*0.85),  gh = Math.round(H*0.32);
 
-    /* 前処理：拡大＋適応的コントラスト強調 */
+    /* 前処理：拡大＋適応的コントラスト強調（液晶の色に依存しない）
+       ポイント：
+       ・単純二値化NG → 液晶の緑/青バックライトでグレー値が均一化するため
+       ・代わりに「画像内の明暗分布を自動検出して伸張」する適応処理を使う */
     function buildCanvas(sx,sy,sw,sh, scale){
       var sc = scale || 3.0;
       var c  = document.createElement('canvas');
@@ -1700,15 +1696,16 @@ function gpsPlace(){
       var d  = id.data;
       var n  = d.length;
 
-      /* グレースケール変換 */
+      /* ① グレースケール変換してヒストグラム取得 */
       var grays = new Uint8Array(n/4);
       for(var i=0,j=0; i<n; i+=4,j++){
         grays[j] = Math.round(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);
       }
-      /* 5%/95%パーセンタイルで範囲決定 */
+      /* ② 5%/95%パーセンタイルで範囲を決定（外れ値無視） */
       var hist = new Uint32Array(256);
       for(var k=0;k<grays.length;k++) hist[grays[k]]++;
-      var total = grays.length, lo=0, hi=255, cum=0;
+      var total = grays.length;
+      var lo=0, hi=255, cum=0;
       for(var v=0;v<256;v++){
         cum+=hist[v];
         if(cum/total < 0.05) lo=v;
@@ -1716,9 +1713,15 @@ function gpsPlace(){
       }
       if(hi-lo < 20){ lo=Math.max(0,lo-10); hi=Math.min(255,hi+10); }
       var range = hi - lo || 1;
-      var midThresh = lo + range * 0.55;
+
+      /* ③ 正規化して二値化（適応閾値：分布中央を境界に） */
+      var midThresh = lo + range * 0.55;  /* 液晶は暗い文字が多いため55%寄り */
       for(var i=0,j=0; i<n; i+=4,j++){
         var g = grays[j];
+        /* コントラスト伸張 */
+        var stretched = Math.round((g - lo) / range * 255);
+        stretched = Math.max(0, Math.min(255, stretched));
+        /* 閾値で二値化 */
         var out = (g < midThresh) ? 0 : 255;
         d[i]=d[i+1]=d[i+2]=out; d[i+3]=255;
       }
@@ -1726,62 +1729,107 @@ function gpsPlace(){
       return c;
     }
 
+    /* 全体キャンバス（ガイド枠内） */
     var fullCanvas = buildCanvas(gx, gy, gw, gh, 3.0);
 
     /* ── 数値抽出ヘルパー ── */
+    /* 行テキストから最初の数値（マイナス付き）を抜く */
     function extractNum(line){
+      /* OCRが全角マイナス「－」「ー」を返すことがあるので正規化 */
       var normalized = line
-        .replace(/[－ー−‐ｰ]/g, '-')
-        .replace(/[。．｡]/g, '.')
-        .replace(/[Oo０]/g,  '0')
-        .replace(/[lIi|１]/g,'1')
-        .replace(/[Ss５]/g,  '5')
-        .replace(/[Bb８]/g,  '8')
-        .replace(/[Zz２]/g,  '2')
-        .replace(/[Gg６]/g,  '6');
-      /* x.xxx 形式の数値のみ対象（整数・角度は除外） */
-      var m = normalized.match(/-?\d{1,3}\.\d{2,4}/);
+        .replace(/[－ー−‐]/g, '-')   /* 全角ダッシュ類 → ハイフン */
+        .replace(/[。．]/g, '.')       /* 全角ピリオド → . */
+        .replace(/[Oo]/g,  '0')        /* O/o → 0 (OCR誤認) */
+        .replace(/[lIi|]/g,'1')        /* l/I → 1 (OCR誤認) */
+        .replace(/[Ss]/g,  '5')        /* S→5 */
+        .replace(/[Bb]/g,  '8');       /* B→8 */
+      var m = normalized.match(/-?\d+\.?\d*/);
       return m ? parseFloat(m[0]) : NaN;
     }
 
-    /* ── ラベルベース抽出（フォールバックなし・ラベルが読めた行のみ採用） ── */
+    /* ── ラベルベース抽出 ── */
+    /* 全行テキストから SP/FS を探す
+       戻り値: {sp:number, fs:number} or null */
     function parseByLabel(fullText){
-      var lines = fullText.split(/\r?\n/)
-        .map(function(l){ return l.trim(); })
-        .filter(function(l){ return l.length > 0; });
+      /* 行に分割（空行除去） */
+      var lines = fullText.split(/\r?\n/).map(function(l){ return l.trim(); })
+                          .filter(function(l){ return l.length > 0; });
 
       var spVal = NaN, fsVal = NaN;
 
-      /* ラベルパターン（優先度順）
-         ※ HD/VD 単体は誤反応しやすいため削除 */
+      /* ラベルパターン定義
+         各パターン: { spRe: 水平距離系, fsRe: 高低差系 }
+         優先度順に試みる */
       var patterns = [
-        /* ① SDR系 */
-        { spRe: /水平距?離/, fsRe: /高低差/ },
-        /* ② トプコン対辺測定 */
-        { spRe: /dHD\b/i,    fsRe: /dVD\b/i },
-        /* ③ ニコン等 */
-        { spRe: /H[\s._]?DIST/i, fsRe: /V[\s._]?DIST/i }
+        /* ① SDR / ソキア系：水平距離・高低差 */
+        {
+          spRe: /水平距?離|水平距|水平|suihei|HD|hd/i,
+          fsRe: /高低差|こうていさ|高低|VD|vd/i
+        },
+        /* ② トプコン系：dHD / dVD （タイヘン対辺測定） */
+        {
+          spRe: /dHD|HD:|水平距離/i,
+          fsRe: /dVD|VD:|高低差/i
+        },
+        /* ③ ニコン・その他：HZ.DIST / V.DIST, H.DIST / V.DST 等 */
+        {
+          spRe: /H[\s._-]?DIST|HZ[\s._-]?DIST|HDIST/i,
+          fsRe: /V[\s._-]?DIST|VZ[\s._-]?DIST|VDIST/i
+        }
       ];
 
+      /* 各パターンを全行に対して試す */
       for(var pi=0; pi<patterns.length; pi++){
         var pat = patterns[pi];
         for(var li=0; li<lines.length; li++){
           var ln = lines[li];
           if(isNaN(spVal) && pat.spRe.test(ln)){
             var v = extractNum(ln);
-            /* 水平距離：0.1m〜999m の正の値のみ採用 */
-            if(!isNaN(v) && v > 0.1 && v < 999) spVal = v;
+            if(!isNaN(v) && v > 0) spVal = v;   /* 水平距離は正の値 */
           }
           if(isNaN(fsVal) && pat.fsRe.test(ln)){
             var fv = extractNum(ln);
-            /* 高低差：-99m〜99m の値のみ採用（距離より小さいはず） */
-            if(!isNaN(fv) && Math.abs(fv) < 99) fsVal = fv;
+            if(!isNaN(fv)) fsVal = fv;            /* 高低差はマイナス可 */
           }
         }
-        if(!isNaN(spVal) && !isNaN(fsVal)) break;
+        if(!isNaN(spVal) && !isNaN(fsVal)) break; /* 見つかったらパターン探索終了 */
       }
 
-      /* ラベルが読めた場合のみ返す（フォールバックなし） */
+      /* ── フォールバック：ラベルが読めなかった場合 ──
+         「正の数値行」と「マイナス付き数値行」から推定
+         例： 37.098 → SP,  -5.838 → FS */
+      if(isNaN(spVal) || isNaN(fsVal)){
+        var posNums = [], negNums = [];
+        lines.forEach(function(ln){
+          /* 行に含まれる数値をすべて抽出 */
+          var norm = ln
+            .replace(/[－ー−‐]/g,'-').replace(/[。．]/g,'.').replace(/[Oo]/g,'0');
+          var ms = norm.match(/-?\d{1,3}\.\d{1,4}/g);  /* x.xxx 形式の数値 */
+          if(ms) ms.forEach(function(m){
+            var n = parseFloat(m);
+            if(!isNaN(n)){
+              if(n < 0) negNums.push(n);
+              else if(n > 0) posNums.push(n);
+            }
+          });
+        });
+        /* 水平距離：正の数値のうち最大（通常一番遠い/大きい） */
+        if(isNaN(spVal) && posNums.length > 0){
+          posNums.sort(function(a,b){return b-a;});
+          spVal = posNums[0];
+        }
+        /* 高低差：マイナスの数値があればそれ、なければ正の数値のうち2番目 */
+        if(isNaN(fsVal)){
+          if(negNums.length > 0){
+            /* 絶対値が最小のものを選ぶ（高低差は距離より小さい傾向） */
+            negNums.sort(function(a,b){return Math.abs(a)-Math.abs(b);});
+            fsVal = negNums[0];
+          } else if(posNums.length >= 2){
+            fsVal = posNums[1];
+          }
+        }
+      }
+
       if(!isNaN(spVal) && !isNaN(fsVal)){
         return {sp: spVal, fs: fsVal};
       }
@@ -1789,10 +1837,12 @@ function gpsPlace(){
     }
 
     /* ── OCR実行 ── */
+    /* Tesseract設定：数値＋記号に絞り、ページモードを「単一ブロック」に */
     var ocrParams = {
-      tessedit_char_whitelist: '0123456789.-',
-      tessedit_pageseg_mode: '6'
+      tessedit_char_whitelist: '0123456789.-+:mHDVdABCabcdefghijklmnopqrstuvwxyz \n水平距離高低差対辺測定斜',
+      tessedit_pageseg_mode: '6'   /* PSM 6 = 均一なテキストブロックとして認識 */
     };
+    /* 全体を一度だけ認識（ラベル込みで読む） */
     tesseractWorker.recognize(fullCanvas, ocrParams)
       .then(function(r){
         var fullText = r.data.text || '';
@@ -1810,9 +1860,8 @@ function gpsPlace(){
             '水平距離（SP）: '+spV+'  高低差（FS）: '+fsV;
           ocrPending = {sp:spV, fs:fsV};
           document.getElementById('ocr-confirm-btn').style.display='';
-          /* 2秒後に再スキャン（値が変わっていなければ自動確定） */
-          if(ocrTimer) clearTimeout(ocrTimer);
-          ocrTimer = setTimeout(captureAndOcr, 2000);
+          /* 値が取れたらスキャン停止。確定ボタン待ち */
+          if(ocrTimer){ clearTimeout(ocrTimer); ocrTimer=null; }
         } else {
           /* 認識テキストの先頭30文字をステータスに表示（診断用） */
           var preview = fullText.replace(/\s+/g,' ').trim().slice(0,40);
