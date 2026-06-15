@@ -879,7 +879,7 @@ function getPayload(){
 }
 function applyPayload(o){
   if(!o) return;
-  data=o.data||[]; baseIH=o.baseIH||null;
+  data=o.data||[]; baseIH=(o.baseIH!==undefined && o.baseIH!==null)?o.baseIH:null;
   if(o.place) document.getElementById('place').value=o.place;
   if(o.ob1)   document.getElementById('observer1').value=o.ob1;
   if(o.ob2)   document.getElementById('observer2').value=o.ob2;
@@ -905,6 +905,27 @@ function updIHBar(){
 /* ── フォーマット ── */
 function fmtN(v){return Number(v).toFixed(3);}
 function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+/* ── 出力ファイル名ヘルパー ── */
+function safeFilePart(s){
+  return String(s||'')
+    .trim()
+    .replace(/[\\\/\:\*\?"\<\>\|]/g,'_')
+    .replace(/\s+/g,'_')
+    .replace(/_+/g,'_')
+    .replace(/^_+|_+$/g,'');
+}
+function surveyFileBase(prefix){
+  var placeEl=document.getElementById('place');
+  var dtEl=document.getElementById('survey-date');
+  var place=safeFilePart(placeEl?placeEl.value:'')||'地点未設定';
+  var dtRaw=dtEl&&dtEl.value ? dtEl.value : '';
+  var dt=dtRaw
+    ? dtRaw.replace('T','_').replace(/[-:]/g,'')
+    : new Date().toISOString().slice(0,16).replace('T','_').replace(/[-:]/g,'');
+  return prefix+'_'+dt+'_'+place;
+}
+
 
 /* ── 描画 ── */
 function render(){
@@ -941,22 +962,50 @@ function render(){
 function drawChart(id){
   const cv=document.getElementById(id);
   if(!cv) return;
+
   const dpr=window.devicePixelRatio||1;
   const W=cv.clientWidth*dpr||300;
   const H=cv.clientHeight*dpr||80;
   cv.width=W; cv.height=H;
+
   const ctx=cv.getContext('2d');
   ctx.clearRect(0,0,W,H);
-  const arr=data.filter(d=>d.use&&d.gh!==''&&!isNaN(d.gh));
 
-  /* 過去断面データ取得（グラフタブのみ） */
+  const isSmall=(id==='chart-inline');
+
+  /* 現在データ：X軸=SP、Y軸=GH。BMはSP=0として扱う */
+  const arr=data
+    .filter(function(d){
+      const gh=Number(d.gh);
+      if(!d.use || d.gh==='' || isNaN(gh)) return false;
+      if(d.isBM) return true;
+      const sp=Number(d.sp);
+      return d.sp!=='' && !isNaN(sp);
+    })
+    .map(function(d){
+      return {point:d.point, x:d.isBM?0:Number(d.sp), gh:Number(d.gh)};
+    })
+    .sort(function(a,b){return a.x-b.x;});
+
+  /* 過去断面：新形式はsp使用、旧形式は保存順を仮Xにする */
   var histPts=[];
   if(id==='chart-full'){
     const sel=document.getElementById('section-hist-sel');
     const idx=sel?parseInt(sel.value):NaN;
     if(!isNaN(idx)){
       const hist=getSectionHist();
-      if(hist[idx]) histPts=hist[idx].points;
+      if(hist[idx]){
+        histPts=(hist[idx].points||[])
+          .map(function(p,i){
+            return {
+              point:p.pt||p.point||'',
+              x:p.sp!==undefined && p.sp!==null && !isNaN(Number(p.sp)) ? Number(p.sp) : i,
+              gh:Number(p.gh)
+            };
+          })
+          .filter(function(p){return !isNaN(p.x) && !isNaN(p.gh);})
+          .sort(function(a,b){return a.x-b.x;});
+      }
     }
   }
 
@@ -964,76 +1013,89 @@ function drawChart(id){
     ctx.fillStyle='#7070a0';
     ctx.font=`${10*dpr}px -apple-system`;
     ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText('2点以上入力するとグラフ表示',W/2,H/2);
+    ctx.fillText('SPとGHを2点以上入力するとグラフ表示',W/2,H/2);
     return;
   }
-  const vals=arr.map(d=>+d.gh);
-  const mn=Math.min(...vals), mx=Math.max(...vals), rng=mx-mn||0.001;
-  const isSmall=(id==='chart-inline');
-  const pL=isSmall?46*dpr:52*dpr, pR=8*dpr, pT=6*dpr, pB=isSmall?6*dpr:18*dpr;
+
+  /* 現在断面と過去断面を共通スケールで描画 */
+  const allPts=arr.concat(histPts);
+  const xs=allPts.map(function(p){return p.x;});
+  const ys=allPts.map(function(p){return p.gh;});
+  let xMin=Math.min.apply(null,xs), xMax=Math.max.apply(null,xs);
+  let yMin=Math.min.apply(null,ys), yMax=Math.max.apply(null,ys);
+  let xRng=xMax-xMin, yRng=yMax-yMin;
+  if(xRng===0){xMin-=0.5; xMax+=0.5; xRng=1;}
+  if(yRng===0){yMin-=0.001; yMax+=0.001; yRng=0.002;}
+
+  const pL=isSmall?46*dpr:52*dpr, pR=8*dpr, pT=6*dpr, pB=isSmall?6*dpr:24*dpr;
   const gW=W-pL-pR, gH=H-pT-pB;
+  function xPos(x){return pL+((x-xMin)/xRng)*gW;}
+  function yPos(gh){return pT+gH*(1-(gh-yMin)/yRng);}
+
   /* グリッド */
   ctx.strokeStyle='rgba(42,42,58,1)'; ctx.lineWidth=1;
   const gs=isSmall?2:4;
-  for(let i=0;i<=gs;i++){const y=pT+gH*(i/gs);ctx.beginPath();ctx.moveTo(pL,y);ctx.lineTo(W-pR,y);ctx.stroke();}
-  /* ライン */
-  ctx.beginPath();
-  arr.forEach((d,i)=>{
-    const x=pL+i*(gW/(arr.length-1)), y=pT+gH*(1-(+d.gh-mn)/rng);
-    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
-  });
-  ctx.strokeStyle='#4f8ef7'; ctx.lineWidth=1.8*dpr; ctx.lineJoin='round'; ctx.stroke();
-  /* ポイント */
-  const pr=isSmall?2.5*dpr:3.5*dpr;
-  arr.forEach((d,i)=>{
-    const x=pL+i*(gW/(arr.length-1)), y=pT+gH*(1-(+d.gh-mn)/rng);
-    ctx.beginPath();ctx.arc(x,y,pr,0,Math.PI*2);ctx.fillStyle='#4f8ef7';ctx.fill();
-    ctx.beginPath();ctx.arc(x,y,pr*.55,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
-  });
-  /* Y軸ラベル */
-  ctx.fillStyle='#7070a0';
-  ctx.font=`${(isSmall?7.5:8.5)*dpr}px -apple-system`;
-  ctx.textAlign='right'; ctx.textBaseline='middle';
   for(let i=0;i<=gs;i++){
-    const v=mn+rng*(1-i/gs), y=pT+gH*(i/gs);
-    ctx.fillText(v.toFixed(3),pL-3,y);
-  }
-  /* X軸ラベル（大きいグラフのみ） */
-  if(!isSmall){
-    ctx.font=`${7.5*dpr}px -apple-system`;
-    ctx.textAlign='center'; ctx.textBaseline='top';
-    const st=Math.max(1,Math.ceil(arr.length/5));
-    arr.forEach((d,i)=>{
-      if(i%st!==0&&i!==arr.length-1) return;
-      const x=pL+i*(gW/(arr.length-1));
-      ctx.fillStyle='#7070a0';
-      ctx.fillText(d.point.length>5?d.point.slice(0,5)+'…':d.point,x,pT+gH+3);
-    });
+    const y=pT+gH*(i/gs);
+    ctx.beginPath(); ctx.moveTo(pL,y); ctx.lineTo(W-pR,y); ctx.stroke();
   }
 
-  /* 過去断面を重ね描き（グラフタブのみ） */
+  /* 過去断面を先に描画 */
   if(id==='chart-full' && histPts.length>=2){
-    const allGH=[...vals,...histPts.map(p=>p.gh)];
-    const hmn=Math.min(...allGH), hmx=Math.max(...allGH), hrng=hmx-hmn||0.001;
     const opEl=document.getElementById('section-opacity');
     const op=opEl?parseInt(opEl.value)/100:0.4;
     ctx.strokeStyle='rgba(248,113,113,'+op+')';
-    ctx.lineWidth=1.6*dpr; ctx.lineJoin='round';
-    ctx.beginPath();
-    histPts.forEach((p,i)=>{
-      /* 新スケールで再計算 */
-      const x=pL+i*(gW/(histPts.length-1));
-      const y=pT+gH*(1-(p.gh-hmn)/hrng);
+    ctx.lineWidth=1.6*dpr; ctx.lineJoin='round'; ctx.beginPath();
+    histPts.forEach(function(p,i){
+      const x=xPos(p.x), y=yPos(p.gh);
       i?ctx.lineTo(x,y):ctx.moveTo(x,y);
     });
     ctx.stroke();
-    /* 過去断面凡例 */
     const sel=document.getElementById('section-hist-sel');
     const lbl=sel&&sel.selectedOptions[0]?sel.selectedOptions[0].textContent:'過去';
     ctx.fillStyle='rgba(248,113,113,0.8)';
     ctx.font=`${8*dpr}px -apple-system`;
     ctx.textAlign='left'; ctx.textBaseline='top';
     ctx.fillText('▬ '+lbl, pL, 2);
+  }
+
+  /* 現在断面ライン */
+  if(arr.length>=2){
+    ctx.beginPath();
+    arr.forEach(function(p,i){
+      const x=xPos(p.x), y=yPos(p.gh);
+      i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+    });
+    ctx.strokeStyle='#4f8ef7'; ctx.lineWidth=1.8*dpr; ctx.lineJoin='round'; ctx.stroke();
+  }
+
+  /* ポイント */
+  const pr=isSmall?2.5*dpr:3.5*dpr;
+  arr.forEach(function(p){
+    const x=xPos(p.x), y=yPos(p.gh);
+    ctx.beginPath(); ctx.arc(x,y,pr,0,Math.PI*2); ctx.fillStyle='#4f8ef7'; ctx.fill();
+    ctx.beginPath(); ctx.arc(x,y,pr*.55,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+  });
+
+  /* Y軸ラベル */
+  ctx.fillStyle='#7070a0';
+  ctx.font=`${(isSmall?7.5:8.5)*dpr}px -apple-system`;
+  ctx.textAlign='right'; ctx.textBaseline='middle';
+  for(let i=0;i<=gs;i++){
+    const v=yMin+yRng*(1-i/gs), y=pT+gH*(i/gs);
+    ctx.fillText(v.toFixed(3),pL-3,y);
+  }
+
+  /* X軸ラベル：大グラフのみ */
+  if(!isSmall){
+    ctx.font=`${7.5*dpr}px -apple-system`;
+    ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillStyle='#7070a0';
+    for(let i=0;i<=4;i++){
+      const sp=xMin+xRng*(i/4), x=xPos(sp);
+      ctx.fillText(sp.toFixed(2),x,pT+gH+4);
+    }
+    ctx.textAlign='right';
+    ctx.fillText('SP',W-pR,pT+gH+14);
   }
 }
 
@@ -1075,7 +1137,7 @@ function downloadCSV(){
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='level_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.download=surveyFileBase('level')+'.csv';
   a.click();
 }
 
@@ -1196,7 +1258,7 @@ setTimeout(loadAndRender, 80);
     var blob = new Blob([JSON.stringify(obj)],{type:'application/json'});
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'dp_data_' + new Date().toISOString().slice(0,10) + '.json';
+    a.download = surveyFileBase('dp_data') + '.json';
     a.click();
   };
 
@@ -1919,14 +1981,23 @@ function getSectionHist(){
 function saveSectionHist(arr){ localStorage.setItem('lvl4_sections',JSON.stringify(arr)); }
 
 function saveSection(){
-  var arr = data.filter(function(d){ return d.use && d.gh!=='' && !isNaN(d.gh); });
-  if(arr.length < 2){ alert('2点以上の測定データが必要です'); return; }
+  var arr = data.filter(function(d){
+    if(!d.use || d.gh==='' || isNaN(Number(d.gh))) return false;
+    if(d.isBM) return true;
+    return d.sp!=='' && !isNaN(Number(d.sp));
+  });
+  if(arr.length < 2){
+    alert('SPとGHがある測点を2点以上入力してください');
+    return;
+  }
   var place = document.getElementById('place').value || '無題';
   var date  = new Date().toLocaleDateString('ja-JP');
   var hist  = getSectionHist();
   hist.unshift({
     label: place+' '+date,
-    points: arr.map(function(d){ return {pt:d.point, gh:+d.gh}; })
+    points: arr.map(function(d){
+      return {pt:d.point, sp:d.isBM?0:Number(d.sp), gh:Number(d.gh)};
+    })
   });
   if(hist.length > 3) hist = hist.slice(0,3);
   saveSectionHist(hist);
