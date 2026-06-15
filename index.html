@@ -926,6 +926,27 @@ function surveyFileBase(prefix){
   return prefix+'_'+dt+'_'+place;
 }
 
+/* ── iPhone/OneDrive向け共有保存ヘルパー ── */
+async function shareOrDownloadBlob(blob, fileName, title){
+  try{
+    const file = new File([blob], fileName, {type: blob.type || 'application/octet-stream'});
+    const shareData = {files:[file], title:title||fileName, text:fileName};
+    if(navigator.canShare && navigator.canShare(shareData) && navigator.share){
+      await navigator.share(shareData);
+      return;
+    }
+  }catch(e){
+    /* 共有キャンセル・非対応・失敗時は従来ダウンロードへフォールバック */
+  }
+  const a=document.createElement('a');
+  const url=URL.createObjectURL(blob);
+  a.href=url;
+  a.download=fileName;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 1000);
+}
+
 
 /* ── 描画 ── */
 function render(){
@@ -962,18 +983,14 @@ function render(){
 function drawChart(id){
   const cv=document.getElementById(id);
   if(!cv) return;
-
   const dpr=window.devicePixelRatio||1;
   const W=cv.clientWidth*dpr||300;
   const H=cv.clientHeight*dpr||80;
   cv.width=W; cv.height=H;
-
   const ctx=cv.getContext('2d');
   ctx.clearRect(0,0,W,H);
-
   const isSmall=(id==='chart-inline');
 
-  /* 現在データ：X軸=SP、Y軸=GH。BMはSP=0として扱う */
   const arr=data
     .filter(function(d){
       const gh=Number(d.gh);
@@ -982,12 +999,9 @@ function drawChart(id){
       const sp=Number(d.sp);
       return d.sp!=='' && !isNaN(sp);
     })
-    .map(function(d){
-      return {point:d.point, x:d.isBM?0:Number(d.sp), gh:Number(d.gh)};
-    })
+    .map(function(d){ return {point:d.point, x:d.isBM?0:Number(d.sp), gh:Number(d.gh)}; })
     .sort(function(a,b){return a.x-b.x;});
 
-  /* 過去断面：新形式はsp使用、旧形式は保存順を仮Xにする */
   var histPts=[];
   if(id==='chart-full'){
     const sel=document.getElementById('section-hist-sel');
@@ -1017,7 +1031,6 @@ function drawChart(id){
     return;
   }
 
-  /* 現在断面と過去断面を共通スケールで描画 */
   const allPts=arr.concat(histPts);
   const xs=allPts.map(function(p){return p.x;});
   const ys=allPts.map(function(p){return p.gh;});
@@ -1032,7 +1045,6 @@ function drawChart(id){
   function xPos(x){return pL+((x-xMin)/xRng)*gW;}
   function yPos(gh){return pT+gH*(1-(gh-yMin)/yRng);}
 
-  /* グリッド */
   ctx.strokeStyle='rgba(42,42,58,1)'; ctx.lineWidth=1;
   const gs=isSmall?2:4;
   for(let i=0;i<=gs;i++){
@@ -1040,7 +1052,6 @@ function drawChart(id){
     ctx.beginPath(); ctx.moveTo(pL,y); ctx.lineTo(W-pR,y); ctx.stroke();
   }
 
-  /* 過去断面を先に描画 */
   if(id==='chart-full' && histPts.length>=2){
     const opEl=document.getElementById('section-opacity');
     const op=opEl?parseInt(opEl.value)/100:0.4;
@@ -1059,7 +1070,6 @@ function drawChart(id){
     ctx.fillText('▬ '+lbl, pL, 2);
   }
 
-  /* 現在断面ライン */
   if(arr.length>=2){
     ctx.beginPath();
     arr.forEach(function(p,i){
@@ -1069,7 +1079,6 @@ function drawChart(id){
     ctx.strokeStyle='#4f8ef7'; ctx.lineWidth=1.8*dpr; ctx.lineJoin='round'; ctx.stroke();
   }
 
-  /* ポイント */
   const pr=isSmall?2.5*dpr:3.5*dpr;
   arr.forEach(function(p){
     const x=xPos(p.x), y=yPos(p.gh);
@@ -1077,7 +1086,6 @@ function drawChart(id){
     ctx.beginPath(); ctx.arc(x,y,pr*.55,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
   });
 
-  /* Y軸ラベル */
   ctx.fillStyle='#7070a0';
   ctx.font=`${(isSmall?7.5:8.5)*dpr}px -apple-system`;
   ctx.textAlign='right'; ctx.textBaseline='middle';
@@ -1086,7 +1094,6 @@ function drawChart(id){
     ctx.fillText(v.toFixed(3),pL-3,y);
   }
 
-  /* X軸ラベル：大グラフのみ */
   if(!isSmall){
     ctx.font=`${7.5*dpr}px -apple-system`;
     ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillStyle='#7070a0';
@@ -1094,13 +1101,12 @@ function drawChart(id){
       const sp=xMin+xRng*(i/4), x=xPos(sp);
       ctx.fillText(sp.toFixed(2),x,pT+gH+4);
     }
-    ctx.textAlign='right';
-    ctx.fillText('SP',W-pR,pT+gH+14);
+    ctx.textAlign='right'; ctx.fillText('SP',W-pR,pT+gH+14);
   }
 }
 
 /* ── CSV ── */
-function downloadCSV(){
+async function downloadCSV(){
   const p=document.getElementById('place').value;
   const o1=document.getElementById('observer1').value;
   const o2=document.getElementById('observer2').value;
@@ -1135,10 +1141,8 @@ function downloadCSV(){
     csv+=d.point+','+(d.sp!==''?d.sp:'')+','+(d.ih!=null?d.ih:'')+','+(d.fs!==''?d.fs:'')+','+(d.gh!==''?d.gh:'')+'\n';
   });
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=surveyFileBase('level')+'.csv';
-  a.click();
+  const fileName=surveyFileBase('level')+'.csv';
+  await shareOrDownloadBlob(blob,fileName,'水準測量CSV');
 }
 
 /* ── リセット ── */
@@ -1256,10 +1260,8 @@ setTimeout(loadAndRender, 80);
   window.dpExportData = function(){
     var obj = { baseImg:baseImg, baseDate:baseDate, history:history, exportedAt: new Date().toLocaleString('ja-JP') };
     var blob = new Blob([JSON.stringify(obj)],{type:'application/json'});
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = surveyFileBase('dp_data') + '.json';
-    a.click();
+    var fileName = surveyFileBase('dp_data') + '.json';
+    shareOrDownloadBlob(blob,fileName,'定点観測データ');
   };
 
   /* インポート */
@@ -1986,18 +1988,13 @@ function saveSection(){
     if(d.isBM) return true;
     return d.sp!=='' && !isNaN(Number(d.sp));
   });
-  if(arr.length < 2){
-    alert('SPとGHがある測点を2点以上入力してください');
-    return;
-  }
+  if(arr.length < 2){ alert('SPとGHがある測点を2点以上入力してください'); return; }
   var place = document.getElementById('place').value || '無題';
   var date  = new Date().toLocaleDateString('ja-JP');
   var hist  = getSectionHist();
   hist.unshift({
     label: place+' '+date,
-    points: arr.map(function(d){
-      return {pt:d.point, sp:d.isBM?0:Number(d.sp), gh:Number(d.gh)};
-    })
+    points: arr.map(function(d){ return {pt:d.point, sp:d.isBM?0:Number(d.sp), gh:Number(d.gh)}; })
   });
   if(hist.length > 3) hist = hist.slice(0,3);
   saveSectionHist(hist);
