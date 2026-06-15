@@ -115,7 +115,7 @@ body{
 .flbl{font-size:10px;color:var(--mu);font-weight:600;letter-spacing:.04em;margin-bottom:2px;}
 .row2{display:flex;gap:8px;}
 .row2>*{flex:1;}
-input[type=text],input[type=number],input[type=datetime-local]{
+input[type=text],input[type=url],input[type=number],input[type=datetime-local]{
   width:100%;background:var(--sf2);border:1px solid var(--bd);
   color:var(--tx);font-size:15px;padding:10px 12px;
   border-radius:var(--rs);outline:none;-webkit-appearance:none;
@@ -508,7 +508,7 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
         <div>
           <div class="flbl">BM測点名</div>
           <div class="pt-suggest" id="bm-suggest" style="margin-bottom:4px;"></div>
-          <input id="bmName" type="text" placeholder="例：BM.1" oninput="filterBmSuggest(this.value)">
+          <input id="bmName" type="url" inputmode="url" lang="en" enterkeyhint="done" placeholder="例：BM.1" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" oninput="filterBmSuggest(this.value)">
         </div>
         <div>
           <div class="flbl">初期GH（標高）</div>
@@ -579,7 +579,7 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
       <div class="inp-row">
         <div class="fi-pt">
           <div class="flbl">測点名</div>
-          <input id="point" type="text" inputmode="url" placeholder="測点名" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" oninput="filterSuggest(this.value)">
+          <input id="point" type="url" inputmode="url" lang="en" enterkeyhint="next" placeholder="測点名" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" oninput="filterSuggest(this.value)">
         </div>
         <div class="fi-num">
           <div class="flbl">SP</div>
@@ -1534,12 +1534,44 @@ var POINT_LIST = [
   '橋中央BM','局舎踊り場'
 ];
 
+
+
+/* アルファベット検索用の別名 */
+var POINT_ALIAS = {
+  '堤内肩': 'teinai teinai kata teinaikata inside shoulder',
+  '堤外肩': 'teigai teigai kata teigaikata outside shoulder',
+  '肩': 'kata shoulder',
+  '尻': 'shiri jiri toe',
+  'WLH': 'wlh water level high',
+  '川中': 'kawanaka kawa naka river center centre',
+  'エルボーTOP': 'elbow erubo top',
+  '取水口TOP': 'shusui shusuikou intake top',
+  'H鋼地山': 'hkou hko h steel jigyama ground',
+  '格納箱芯': 'kakunou hako shin box center centre',
+  'L字地山': 'l lji jigyama ground',
+  'L字TOP': 'l lji top',
+  '水位標': 'suiihyo suii water gauge',
+  'チェック': 'check chekku',
+  'BM': 'bm benchmark',
+  '橋下流右岸地覆': 'hashi karyu ugan jifuku bridge downstream right bank',
+  '橋下流左岸地覆': 'hashi karyu sagan jifuku bridge downstream left bank',
+  '橋上流右岸地覆': 'hashi joryu ugan jifuku bridge upstream right bank',
+  '橋上流左岸地覆': 'hashi joryu sagan jifuku bridge upstream left bank',
+  '橋中央BM': 'hashi chuo bm bridge center benchmark',
+  '局舎踊り場': 'kyokusha odoriba landing'
+};
+function pointSearchText(p){
+  return (String(p||'') + ' ' + (POINT_ALIAS[p] || '')).toLowerCase();
+}
+
 /* BM候補リスト */
-var BM_LIST = ['BM.1','BM.2','BM.3','BM.4','BM.5','BM.A','BM.B','BM-1','BM-2','KBM.1','KBM.2'];
+var BM_LIST = Array.from(new Set(['BM.1','BM.2','BM.3','BM.4','BM.5','BM.A','BM.B','BM-1','BM-2','KBM.1','KBM.2'].concat(POINT_LIST)));
 
 function filterBmSuggest(q){
   q = (q||'').trim().toLowerCase();
-  var filtered = q==='' ? BM_LIST : BM_LIST.filter(function(p){ return p.toLowerCase().indexOf(q)!==-1; });
+  var filtered = q === ''
+    ? BM_LIST
+    : BM_LIST.filter(function(p){ return pointSearchText(p).indexOf(q) !== -1; });
   renderBmSuggest(filtered);
 }
 function renderBmSuggest(list){
@@ -1588,10 +1620,10 @@ function openNumpadGH(){
 }
 
 function filterSuggest(q){
-  q = q.trim().toLowerCase();
+  q = (q||'').trim().toLowerCase();
   var filtered = q === ''
     ? POINT_LIST
-    : POINT_LIST.filter(function(p){ return p.toLowerCase().indexOf(q) !== -1; });
+    : POINT_LIST.filter(function(p){ return pointSearchText(p).indexOf(q) !== -1; });
   renderSuggest(filtered);
 }
 
