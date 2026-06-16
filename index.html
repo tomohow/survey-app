@@ -2280,8 +2280,75 @@ function xpImgPointFromCanvas(p){return{x:(p.x-xp.view.x)/xp.view.scale,y:(p.y-x
 function xpCanvasFromImg(p){return{x:xp.view.x+p.x*xp.view.scale,y:xp.view.y+p.y*xp.view.scale};}
 function xpUpdateStatus(){var el=document.getElementById('xp-status');if(!el)return;if(xp.mode==='pan'){el.textContent='写真をドラッグして表示位置を調整できます。点指定に戻る場合は①〜③を選んでください。';return;}el.textContent=!xp.controls.start?'写真上で「始点」をタップしてください。':(!xp.controls.rep?'代表測点を選び、写真上で「代表点」をタップしてください。':(!xp.controls.end?'写真上で「終点」をタップしてください。':'測点マーカーを表示中。ズレた丸はドラッグで個別補正できます。'));}
 function xpRepSP(){if(xp.repIndex==null)return null;var p=xpSurveyPts().find(function(v){return v.idx===xp.repIndex;});return p?p.sp:null;}
-function xpCalcBasePoint(pt){var pts=xpSurveyPts();if(!pts.length||!xp.controls.start||!xp.controls.end)return null;var min=pts[0].sp,max=pts[pts.length-1].sp,rs=xpRepSP();if(xp.controls.rep&&rs!=null&&rs>min&&rs<max){if(pt.sp<=rs){var t1=(pt.sp-min)/(rs-min||1);return{x:xp.controls.start.x+t1*(xp.controls.rep.x-xp.controls.start.x),y:xp.controls.start.y+t1*(xp.controls.rep.y-xp.controls.start.y)};}var t2=(pt.sp-rs)/(max-rs||1);return{x:xp.controls.rep.x+t2*(xp.controls.end.x-xp.controls.rep.x),y:xp.controls.rep.y+t2*(xp.controls.end.y-xp.controls.rep.y)};}var t=(pt.sp-min)/(max-min||1);return{x:xp.controls.start.x+t*(xp.controls.end.x-xp.controls.start.x),y:xp.controls.start.y+t*(xp.controls.end.y-xp.controls.start.y)};}
-function xpCalcAutoPoint(pt){var base=xpCalcBasePoint(pt);if(!base)return null;var pts=xpSurveyPts();var ghs=pts.map(function(p){return Number(p.gh);}).filter(function(v){return !isNaN(v);});if(ghs.length<2)return base;var ghMin=Math.min.apply(null,ghs),ghMax=Math.max.apply(null,ghs),ghR=ghMax-ghMin;if(!ghR)return base;var ghMid=(ghMin+ghMax)/2;var p1=xp.controls.start,p2=xp.controls.end;var baseLen=Math.hypot((p2.x-p1.x),(p2.y-p1.y))||Math.max(xp.img?xp.img.width:1,xp.img?xp.img.height:1);var amp=Math.min(baseLen*0.18,(xp.img?xp.img.height:baseLen)*0.16);var off=((Number(pt.gh)-ghMid)/ghR)*amp;return{x:base.x,y:base.y-off};}
+function xpControlInfo(){
+  var pts=xpSurveyPts();
+  if(!pts.length || !xp.controls.start || !xp.controls.end) return null;
+  var first=pts[0], last=pts[pts.length-1];
+  var rep=null;
+  if(xp.repIndex!=null){
+    rep=pts.find(function(p){return p.idx===xp.repIndex;})||null;
+  }
+  if(!rep || rep.idx===first.idx || rep.idx===last.idx || !xp.controls.rep){
+    return {
+      pts:pts,
+      controls:[
+        {sp:first.sp, gh:first.gh, img:xp.controls.start},
+        {sp:last.sp,  gh:last.gh,  img:xp.controls.end}
+      ]
+    };
+  }
+  return {
+    pts:pts,
+    controls:[
+      {sp:first.sp, gh:first.gh, img:xp.controls.start},
+      {sp:rep.sp,   gh:rep.gh,   img:xp.controls.rep},
+      {sp:last.sp,  gh:last.gh,  img:xp.controls.end}
+    ]
+  };
+}
+function xpCalcBasePoint(pt){
+  var info=xpControlInfo();
+  if(!info) return null;
+  var cs=info.controls;
+  var a=cs[0], b=cs[cs.length-1];
+  if(cs.length===3 && pt.sp>cs[1].sp){ a=cs[1]; b=cs[2]; }
+  else if(cs.length===3){ a=cs[0]; b=cs[1]; }
+  var denom=(b.sp-a.sp)||1;
+  var t=(pt.sp-a.sp)/denom;
+  t=Math.max(0,Math.min(1,t));
+  return {
+    x:a.img.x+t*(b.img.x-a.img.x),
+    y:a.img.y+t*(b.img.y-a.img.y),
+    t:t,
+    a:a,
+    b:b
+  };
+}
+function xpCalcAutoPoint(pt){
+  var base=xpCalcBasePoint(pt);
+  if(!base) return null;
+
+  /* 指定した始点・代表点・終点は、断面線そのものの制御点として固定する */
+  if(Math.abs(pt.sp-base.a.sp)<1e-9) return {x:base.a.img.x,y:base.a.img.y};
+  if(Math.abs(pt.sp-base.b.sp)<1e-9) return {x:base.b.img.x,y:base.b.img.y};
+
+  var pts=xpSurveyPts();
+  var ghs=pts.map(function(p){return Number(p.gh);}).filter(function(v){return !isNaN(v);});
+  if(ghs.length<2) return {x:base.x,y:base.y};
+  var ghMin=Math.min.apply(null,ghs), ghMax=Math.max.apply(null,ghs), ghR=ghMax-ghMin;
+  if(!ghR) return {x:base.x,y:base.y};
+
+  /* 区間両端のGHを直線補間し、そこからの差分だけを写真上の断面線に反映する。
+     これにより、始点・代表点・終点は必ず指定位置を通り、中間点だけがGH形状で上下する。 */
+  var ghLine=base.a.gh + base.t*(base.b.gh-base.a.gh);
+  var dev=Number(pt.gh)-ghLine;
+  var dx=base.b.img.x-base.a.img.x, dy=base.b.img.y-base.a.img.y;
+  var len=Math.hypot(dx,dy)||1;
+  var nx=dy/len, ny=-dx/len;
+  var amp=Math.min(len*0.22,(xp.img?xp.img.height:len)*0.18);
+  var off=(dev/ghR)*amp;
+  return {x:base.x+nx*off,y:base.y+ny*off};
+}
 function xpDrawMarkerLine(ctx,toCanvas,lineWidth,color){if(!xp.markers||xp.markers.length<2)return;var arr=xp.markers.slice().sort(function(a,b){return a.sp-b.sp;});ctx.beginPath();arr.forEach(function(m,i){var p=toCanvas?toCanvas(m):m;if(i)ctx.lineTo(p.x,p.y);else ctx.moveTo(p.x,p.y);});ctx.strokeStyle=color||'rgba(250,204,21,.88)';ctx.lineWidth=lineWidth;ctx.lineJoin='round';ctx.lineCap='round';ctx.stroke();}
 function xpAutoPlace(clearOverrides){if(clearOverrides)xp.overrides={};var pts=xpSurveyPts();xp.markers=[];if(!xp.controls.start||!xp.controls.end)return;pts.forEach(function(p){var pos=xp.overrides[p.idx]||xpCalcAutoPoint(p);if(pos)xp.markers.push({idx:p.idx,point:p.point,sp:p.sp,gh:p.gh,isBM:p.isBM,x:pos.x,y:pos.y});});xpUpdateStatus();xpDraw();}
 function xpResetMarks(){xp.overrides={};xpAutoPlace(false);}
