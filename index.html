@@ -1600,7 +1600,19 @@ var POINT_LIST = [
   'L字地山','L字TOP','水位標','チェック','BM',
   '橋下流右岸地覆','橋下流左岸地覆',
   '橋上流右岸地覆','橋上流左岸地覆',
-  '橋中央BM','局舎踊り場'
+  '橋中央BM','局舎踊り場',
+  'ピア芯',
+  '法途中',
+  'WLH&地山',
+  '護岸肩',
+  '護岸尻',
+  'H鋼井戸TOP',
+  '小段肩',
+  '小段尻',
+  '低水路肩',
+  '井戸芯',
+  '井戸地山',
+  'H鋼芯'
 ];
 
 
@@ -1627,7 +1639,19 @@ var POINT_ALIAS = {
   '橋上流右岸地覆': 'hashi joryu ugan jifuku bridge upstream right bank',
   '橋上流左岸地覆': 'hashi joryu sagan jifuku bridge upstream left bank',
   '橋中央BM': 'hashi chuo bm bridge center benchmark',
-  '局舎踊り場': 'kyokusha odoriba landing'
+  '局舎踊り場': 'kyokusha odoriba landing',
+  'ピア芯': 'pia shin pier center peer center',
+  '法途中': 'nori tochu slope middle noritochu',
+  'WLH&地山': 'wlh jigyama ground water level high',
+  '護岸肩': 'gogan kata revetment shoulder',
+  '護岸尻': 'gogan jiri shiri revetment toe',
+  'H鋼井戸TOP': 'hkou hko h steel ido top well top',
+  '小段肩': 'kodan kata berm shoulder',
+  '小段尻': 'kodan jiri shiri berm toe',
+  '低水路肩': 'teisuiro kata low water channel shoulder',
+  '井戸芯': 'ido shin well center',
+  '井戸地山': 'ido jigyama well ground',
+  'H鋼芯': 'hkou hko h steel shin center'
 };
 function pointSearchText(p){
   return (String(p||'') + ' ' + (POINT_ALIAS[p] || '')).toLowerCase();
