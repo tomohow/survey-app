@@ -1,0 +1,32 @@
+{
+  "name": "水準測量野帳",
+  "short_name": "水準測量",
+  "description": "水準測量・横断写真プロット用オフライン対応PWA",
+  "lang": "ja",
+  "start_url": "./index_marker_zoom_pointlist_added_split_graphline_affine_gesture_offline_pwa.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0a0a0f",
+  "icons": [
+    {
+      "src": "level-icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "level-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "level-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
