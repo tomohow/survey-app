@@ -3,7 +3,7 @@
   "short_name": "水準測量",
   "description": "水準測量・横断写真プロット用オフライン対応PWA",
   "lang": "ja",
-  "start_url": "./index_marker_zoom_pointlist_added_split_graphline_affine_gesture_offline_pwa.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
