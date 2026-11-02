@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="水準測量野帳">
 <link rel="apple-touch-icon" sizes="180x180" href="level-icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="level-icon-192.png">
-<link rel="manifest" href="manifest.webmanifest?v=20260709-01">
+<link rel="manifest" href="manifest.webmanifest?v=20261102-02">
 
 <style>
 :root{
@@ -462,6 +462,18 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
 .xp-select-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}.xp-select-row label{font-size:11px;color:var(--mu);white-space:nowrap;font-weight:700;}
 #xp-rep-select{flex:1;background:var(--sf2);border:1px solid var(--bd);color:var(--tx);font-size:12px;padding:7px 8px;border-radius:8px;outline:none;}
 
+
+/* ── 統合地点・BMマスター / 保存改善 ── */
+.master-list{display:flex;flex-direction:column;gap:6px;max-height:230px;overflow-y:auto;margin-top:6px;}
+.master-item{width:100%;text-align:left;padding:9px 10px;background:var(--sf2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);cursor:pointer;}
+.master-item.selected{border-color:var(--ac);background:rgba(79,142,247,.14);}
+.master-main{font-size:13px;font-weight:800;display:flex;justify-content:space-between;gap:8px;}
+.master-sub{font-size:10px;color:var(--mu);margin-top:3px;line-height:1.35;}
+.master-gh{color:var(--pl);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.master-state{font-size:10px;color:var(--mu);margin-top:5px;}
+.datetime-row{display:flex;gap:6px;align-items:center;}.datetime-row input{flex:1;min-width:0;}.now-btn{flex:0 0 auto;padding:10px 9px;font-size:11px;}
+.save-state.unsaved{border-color:rgba(248,113,113,.55);background:rgba(248,113,113,.12);}.save-state.unsaved .csv-h-lbl{color:var(--mn);}
+
 </style>
 </head>
 <body>
@@ -496,8 +508,8 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
       <div class="app-sub">Level Field Book</div>
     </div>
     <div class="hdr-right">
-      <div class="csv-head-status" id="csv-head-status" title="前回CSV出力">
-        <span class="csv-h-lbl">前回CSV</span>
+      <div class="csv-head-status" id="csv-head-status" title="保存状態">
+        <span class="csv-h-lbl">保存状態</span>
         <span class="csv-h-main" id="csv-head-main">なし</span>
         <span class="csv-h-sub" id="csv-head-sub"></span>
       </div>
@@ -522,13 +534,15 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
     地点名
     <button class="gps-btn" onclick="gpsPlace()">📍 GPS取得</button>
   </div>
-  <input id="place" type="text" placeholder="例：○○地区 △△工区">
+  <input id="place" type="text" placeholder="地点名を検索" autocomplete="off" oninput="filterSiteMaster(this.value)">
+  <div class="master-state" id="site-master-state">地点マスターを読み込んでいます…</div>
+  <div class="master-list" id="site-master-list"></div>
 </div>
         <div class="row2">
           <div><div class="flbl">観測者①</div><input id="observer1" type="text" placeholder="名前"></div>
           <div><div class="flbl">観測者②</div><input id="observer2" type="text" placeholder="名前"></div>
         </div>
-        <div><div class="flbl">測定日時</div><input id="survey-date" type="datetime-local"></div>
+        <div><div class="flbl">測定日時</div><div class="datetime-row"><input id="survey-date" type="datetime-local"><button class="btn btn-s now-btn" type="button" onclick="updateSurveyDateNow()">現在時刻</button></div></div>
       </div>
     </div>
     <div class="card">
@@ -536,7 +550,7 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
       <div class="fields">
         <div>
           <div class="flbl">BM測点名</div>
-          <div class="pt-suggest" id="bm-suggest" style="margin-bottom:4px;"></div>
+          <div class="master-state" id="bm-master-state">地点を選択すると登録BMを表示します</div><div class="master-list" id="bm-suggest" style="margin-bottom:4px;"></div>
           <input id="bmName" type="url" inputmode="url" lang="en" enterkeyhint="done" placeholder="例：BM.1" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" oninput="filterBmSuggest(this.value)">
         </div>
         <div>
@@ -547,7 +561,15 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
       </div>
     </div>
     <button class="btn btn-p" onclick="setInit()">測定開始</button>
-    <button class="btn btn-s" onclick="downloadCSV()">📥 CSVダウンロード</button>
+    <div class="card">
+      <div class="card-lbl">💾 測定データ保存・復元</div>
+      <div class="fields">
+        <button class="btn btn-s" onclick="downloadCSV()">📥 CSV保存</button>
+        <button class="btn btn-s" onclick="exportWorkData()">📦 作業データ保存（完全復元JSON）</button>
+        <label class="btn btn-s" style="text-align:center;display:block;cursor:pointer;">📂 作業データ読込<input id="work-import-input" type="file" accept=".json,application/json" style="display:none"></label>
+        <button class="btn btn-s" id="restore-backup-btn" onclick="restoreLastBackup()" style="display:none">↩ 直前測定を復元</button>
+      </div>
+    </div>
     <button class="btn btn-d" onclick="clearAll()">データをリセット</button>
   </div>
 </div>
@@ -839,6 +861,7 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
   </div>
 </div>
 
+<script src="site-master.js?v=20261102-02"></script>
 <script>
 /* ── 数値入力ヘルパー（不要：initGHはテンキーパッド対応） ── */
 
@@ -883,13 +906,19 @@ function switchTab(n){
 }
 
 /* ── BM設定 ── */
-function setInit(){
+async function setInit(){
   const gh=parseFloat(document.getElementById('initGH').value);
   if(isNaN(gh)){alert('初期GHを入力してください');return;}
+  if(data.length>1 && isSurveyDirty()){
+    if(confirm('前回の測定内容に未保存の変更があります。CSVを保存してから新しい測定を開始しますか？')){
+      const ok=await downloadCSV(); if(!ok) return;
+    }else if(!confirm('前回内容を保存せず、新しい測定を開始しますか？')) return;
+  }
+  if(data.length) saveLastBackup();
   baseIH=gh;
   const nm=document.getElementById('bmName').value||'BM';
   data=[{point:nm,isBM:true,gh,use:true,ihOverride:null}];
-  save(); switchTab('measure');
+  markSurveyDirty(); save(); switchTab('measure');
 }
 
 /* ── IH取得（行インデックス基準） ── */
@@ -997,6 +1026,9 @@ function getPayload(){
     ob1:document.getElementById('observer1').value,
     ob2:document.getElementById('observer2').value,
     surveyDate:document.getElementById('survey-date').value,
+    siteId:(window.selectedSite&&window.selectedSite.id)||'',
+    masterUpdatedAt:(window.selectedSite&&window.selectedSite.updatedAt)||'',
+    dirty:isSurveyDirty(),
     ts:Date.now()
   };
 }
@@ -1006,10 +1038,11 @@ function applyPayload(o){
   if(o.place) document.getElementById('place').value=o.place;
   if(o.ob1)   document.getElementById('observer1').value=o.ob1;
   if(o.ob2)   document.getElementById('observer2').value=o.ob2;
-  if(o.surveyDate) document.getElementById('survey-date').value=o.surveyDate;
+  if(o.siteId){ var s=(window.SITE_MASTER||[]).find(function(v){return v.id===o.siteId;}); if(s) selectSiteMaster(s.id,false); }
 }
 
-function save(){
+function save(clean){
+  if(clean!==true && data.length) markSurveyDirty();
   const p=getPayload();
   try{localStorage.setItem('lvl4',JSON.stringify(p));}catch(e){}
   idbSave(p);
@@ -1068,6 +1101,7 @@ function recordCsvOutput(fileName,status){
   var o={fileName:fileName,status:status||'共有先へ渡しました',savedAt:new Date().toLocaleString('ja-JP')};
   try{localStorage.setItem('lvl4_last_csv',JSON.stringify(o));}catch(e){}
   updateCsvHeader();
+  updateSaveHeaderState();
 }
 
 /* ── iPhone/OneDrive向け共有保存ヘルパー ── */
@@ -1259,6 +1293,7 @@ async function downloadCSV(){
   const dt=document.getElementById('survey-date').value;
   let csv='\uFEFF';
   csv+='地点名,'+p+'\n';
+  if(window.selectedSite){csv+='共通地点ID,'+selectedSite.id+'\n';csv+='緯度,'+selectedSite.lat+'\n';csv+='経度,'+selectedSite.lon+'\n';csv+='マスター更新日,'+selectedSite.updatedAt+'\n';}
   csv+='観測者①,'+o1+'\n';
   csv+='観測者②,'+o2+'\n';
   csv+='測定日時,'+dt+'\n\n';
@@ -1289,7 +1324,8 @@ async function downloadCSV(){
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
   const fileName=surveyFileBase('level')+'.csv';
   const result=await shareOrDownloadBlob(blob,fileName,'水準測量CSV');
-  if(result&&result.ok) recordCsvOutput(fileName,result.method==='share'?'共有先へ渡しました':'ダウンロードを開始しました');
+  if(result&&result.ok){ setSurveyDirty(false); recordCsvOutput(fileName,result.method==='share'?'共有先へ渡しました':'ダウンロードを開始しました'); save(true); return true; }
+  return false;
 }
 
 /* ── リセット ── */
@@ -1312,6 +1348,8 @@ function loadAndRender(){
       ?(idbData.ts>=lsData.ts?idbData:lsData)
       :(idbData||lsData);
     applyPayload(best);
+    updateSurveyDateNow(false);
+    initMasterUI();
     render();
   });
 }
@@ -1674,33 +1712,10 @@ function pointSearchText(p){
   return (String(p||'') + ' ' + (POINT_ALIAS[p] || '')).toLowerCase();
 }
 
-/* BM候補リスト */
-var BM_LIST = Array.from(new Set(['BM.1','BM.2','BM.3','BM.4','BM.5','BM.A','BM.B','BM-1','BM-2','KBM.1','KBM.2'].concat(POINT_LIST)));
-
-function filterBmSuggest(q){
-  q = (q||'').trim().toLowerCase();
-  var filtered = q === ''
-    ? BM_LIST
-    : BM_LIST.filter(function(p){ return pointSearchText(p).indexOf(q) !== -1; });
-  renderBmSuggest(filtered);
-}
-function renderBmSuggest(list){
-  var wrap = document.getElementById('bm-suggest');
-  if(!wrap) return;
-  wrap.innerHTML='';
-  var cur = document.getElementById('bmName').value.trim();
-  list.forEach(function(p){
-    var btn=document.createElement('button');
-    btn.className='pt-chip'+(p===cur?' selected':'');
-    btn.textContent=p;
-    btn.addEventListener('click',function(){
-      document.getElementById('bmName').value=p;
-      renderBmSuggest(list);
-    });
-    wrap.appendChild(btn);
-  });
-}
-renderBmSuggest(BM_LIST);
+/* BM候補は統合地点BMマスターから表示 */
+var BM_LIST=[];
+function filterBmSuggest(q){ renderBmMaster((q||'').trim()); }
+function renderBmSuggest(){ renderBmMaster(''); }
 
 var suggestAll = POINT_LIST.slice();
 
@@ -1834,28 +1849,12 @@ function nkNext(){
 ══════════════════════════════════════════════ */
 function gpsPlace(){
   if(!navigator.geolocation){ alert('GPSが利用できません'); return; }
-  var btn = document.querySelector('.gps-btn');
-  btn.textContent = '⏳ 取得中…';
+  var btn=document.querySelector('.gps-btn'); btn.textContent='⏳ 取得中…';
   navigator.geolocation.getCurrentPosition(function(pos){
-    var lat = pos.coords.latitude.toFixed(5);
-    var lon = pos.coords.longitude.toFixed(5);
-    var el = document.getElementById('place');
-    el.value = lat+'N,'+lon+'E';
-    btn.textContent = '📍 GPS取得';
-    /* 逆ジオコーディング（オンライン時のみ） */
-    fetch('https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lon+'&format=json&accept-language=ja')
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        var addr = d.address || {};
-        var name = addr.city||addr.town||addr.village||addr.county||addr.state||'';
-        var road = addr.road||addr.suburb||'';
-        if(name||road) el.value = (name+' '+road).trim();
-      })
-      .catch(function(){/* オフライン時は座標のまま */});
-  }, function(err){
-    alert('GPS取得失敗: '+err.message);
-    btn.textContent = '📍 GPS取得';
-  }, {timeout:10000, enableHighAccuracy:true});
+    btn.textContent='📍 GPS取得';
+    window.currentGps={lat:pos.coords.latitude,lon:pos.coords.longitude};
+    renderSiteMaster((document.getElementById('place').value||'').trim());
+  },function(err){btn.textContent='📍 GPS取得';alert('GPS取得失敗: '+err.message);},{timeout:10000,enableHighAccuracy:true});
 }
 
 /* ══════════════════════════════════════════════
@@ -2193,6 +2192,65 @@ function gpsPlace(){
   });
 })();
 
+
+/* ══════════════════════════════════════════════
+   統合地点・BMマスター / 保存状態 / 完全復元
+══════════════════════════════════════════════ */
+window.selectedSite=null; window.currentGps=null;
+function nowLocalValue(){var n=new Date();return new Date(n.getTime()-n.getTimezoneOffset()*60000).toISOString().slice(0,16);}
+function updateSurveyDateNow(doSave){document.getElementById('survey-date').value=nowLocalValue();if(doSave!==false&&data.length)save();}
+function fmtMasterDate(s){if(!s)return '不明';return String(s).slice(0,10).replace(/-/g,'/');}
+function distanceM(a,b,c,d){var R=6371000,p=Math.PI/180,x=(d-b)*p*Math.cos((a+c)*p/2),y=(c-a)*p;return Math.sqrt(x*x+y*y)*R;}
+function escText(s){return String(s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function initMasterUI(){
+  document.getElementById('site-master-state').textContent='統合マスター '+(window.SITE_MASTER||[]).length+'地点 / 更新 '+fmtMasterDate((window.SITE_MASTER||[])[0]&&SITE_MASTER[0].updatedAt);
+  renderSiteMaster(document.getElementById('place').value||'');
+  document.getElementById('restore-backup-btn').style.display=localStorage.getItem('lvl4_last_backup')?'block':'none';
+  updateSaveHeaderState();
+}
+function normalizeSiteText(v){return String(v||'').normalize('NFKC').replace(/[\s　]+/g,'').toLowerCase();}
+function filterSiteMaster(q){
+  var key=normalizeSiteText(q);
+  var exact=(window.SITE_MASTER||[]).filter(function(s){return normalizeSiteText(s.name)===key;});
+  if(key && exact.length===1){
+    window.selectedSite=exact[0];
+    renderSiteMaster(q);
+    renderBmMaster('');
+    return;
+  }
+  window.selectedSite=null;
+  renderSiteMaster(q);
+  renderBmMaster('');
+}
+function renderSiteMaster(q){
+  var wrap=document.getElementById('site-master-list');if(!wrap)return; q=String(q||'').trim().toLowerCase();
+  var list=(window.SITE_MASTER||[]).filter(function(s){return !q||s.name.toLowerCase().indexOf(q)>=0||String(s.address||'').toLowerCase().indexOf(q)>=0;});
+  list=list.map(function(s){var d=window.currentGps&&s.lat&&s.lon?distanceM(currentGps.lat,currentGps.lon,s.lat,s.lon):null;return{s:s,d:d};});
+  list.sort(function(a,b){if(a.d!=null&&b.d!=null)return a.d-b.d;if(a.d!=null)return -1;if(b.d!=null)return 1;return a.s.name.localeCompare(b.s.name,'ja');});
+  wrap.innerHTML=''; list.slice(0,35).forEach(function(x){var s=x.s,b=document.createElement('button');b.type='button';b.className='master-item'+(window.selectedSite&&selectedSite.id===s.id?' selected':'');
+    var near=x.d==null?'':(x.d<1000?Math.round(x.d)+'m':(x.d/1000).toFixed(1)+'km');
+    b.innerHTML='<div class="master-main"><span>'+escText(s.name)+'</span><span class="master-gh">'+near+'</span></div><div class="master-sub">'+escText(s.address||'住所なし')+'<br>緯度 '+s.lat+' / 経度 '+s.lon+' / 判定半径 '+s.radius+'m / 更新 '+fmtMasterDate(s.updatedAt)+'</div>';
+    b.onclick=function(){selectSiteMaster(s.id,true);};wrap.appendChild(b);
+  });
+}
+function selectSiteMaster(id,writePlace){var s=(window.SITE_MASTER||[]).find(function(v){return v.id===id;});if(!s)return;window.selectedSite=s;if(writePlace!==false)document.getElementById('place').value=s.name;renderSiteMaster(s.name);renderBmMaster('');}
+function renderBmMaster(q){
+  var wrap=document.getElementById('bm-suggest'),state=document.getElementById('bm-master-state');if(!wrap)return;wrap.innerHTML='';
+  if(!window.selectedSite){state.textContent='地点を選択すると登録BMを表示します';return;}
+  q=String(q||'').trim().toLowerCase();var list=(selectedSite.bms||[]).filter(function(b){return !q||b.name.toLowerCase().indexOf(q)>=0;});
+  state.textContent=selectedSite.name+'：'+list.length+'件 / 共通更新 '+fmtMasterDate(selectedSite.updatedAt);
+  list.forEach(function(bm){var b=document.createElement('button');b.type='button';b.className='master-item';b.innerHTML='<div class="master-main"><span>'+escText(bm.name)+'</span><span class="master-gh">GH '+Number(bm.gh).toFixed(3)+'</span></div><div class="master-sub">更新 '+fmtMasterDate(bm.updatedAt||selectedSite.updatedAt)+'</div>';b.onclick=function(){selectBmMaster(bm);};wrap.appendChild(b);});
+}
+function selectBmMaster(bm){document.getElementById('bmName').value=bm.name;var v=Number(bm.gh).toFixed(3);document.getElementById('initGH').value=v;var d=document.getElementById('initGH-display');d.textContent=v;d.classList.remove('empty');renderBmMaster(bm.name);}
+function isSurveyDirty(){return localStorage.getItem('lvl4_dirty')==='1';}
+function setSurveyDirty(v){try{localStorage.setItem('lvl4_dirty',v?'1':'0');}catch(e){}updateSaveHeaderState();}
+function markSurveyDirty(){setSurveyDirty(true);}
+function updateSaveHeaderState(){var box=document.getElementById('csv-head-status'),main=document.getElementById('csv-head-main'),sub=document.getElementById('csv-head-sub');if(!box||!main)return;box.classList.toggle('save-state',true);box.classList.toggle('unsaved',isSurveyDirty());if(isSurveyDirty()){main.textContent='未保存の変更あり';sub.textContent='';}else updateCsvHeader();}
+function saveLastBackup(){try{localStorage.setItem('lvl4_last_backup',JSON.stringify(getPayload()));document.getElementById('restore-backup-btn').style.display='block';}catch(e){}}
+function restoreLastBackup(){try{var o=JSON.parse(localStorage.getItem('lvl4_last_backup')||'null');if(!o){alert('直前バックアップはありません');return;}if(!confirm('現在の作業内容を直前バックアップで置き換えますか？'))return;applyPayload(o);if(o.surveyDate)document.getElementById('survey-date').value=o.surveyDate;setSurveyDirty(true);save();initMasterUI();alert('直前の測定を復元しました');}catch(e){alert('復元できませんでした: '+e.message);}}
+async function exportWorkData(){var obj={format:'level-survey-work',version:1,exportedAt:new Date().toISOString(),survey:getPayload(),sections:getSectionHist(),siteMasterVersion:(SITE_MASTER[0]&&SITE_MASTER[0].updatedAt)||''};var blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});var fn=surveyFileBase('level_work')+'.json';var result=await shareOrDownloadBlob(blob,fn,'水準測量 作業データ');if(result&&result.ok){setSurveyDirty(false);recordCsvOutput(fn,'作業データ保存');save(true);}}
+(function(){var input=document.getElementById('work-import-input');if(!input)return;input.addEventListener('change',function(){var file=this.files[0];this.value='';if(!file)return;var rd=new FileReader();rd.onload=function(e){try{var o=JSON.parse(e.target.result),p=o.survey||o;if(!p||!Array.isArray(p.data))throw new Error('対応する作業データではありません');if(data.length)saveLastBackup();applyPayload(p);if(p.surveyDate)document.getElementById('survey-date').value=p.surveyDate;if(Array.isArray(o.sections))saveSectionHist(o.sections);setSurveyDirty(true);save();refreshSectionSel();initMasterUI();alert('作業データを読み込みました');}catch(ex){alert('読込エラー: '+ex.message);}};rd.readAsText(file);});})();
+
 /* ══════════════════════════════════════════════
    断面履歴（グラフタブ）
 ══════════════════════════════════════════════ */
@@ -2258,7 +2316,7 @@ updateCsvHeader();
     return;
   }
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./sw.js?v=20260709-01', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261102-02', {scope:'./'})
       .then(function(reg){
         console.log('Service Worker registered:', reg.scope);
         if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
