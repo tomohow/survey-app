@@ -1,4 +1,4 @@
-const CACHE_NAME = 'level-survey-offline-v20260709-01';
+const CACHE_NAME = 'level-survey-offline-v20261119-02';
 const APP_SHELL = [
   './',
   './index.html',
