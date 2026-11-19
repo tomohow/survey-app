@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="水準測量野帳">
 <link rel="apple-touch-icon" sizes="180x180" href="level-icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="level-icon-192.png">
-<link rel="manifest" href="manifest.webmanifest?v=20261119-02">
+<link rel="manifest" href="manifest.webmanifest?v=20261119-03">
 
 <style>
 :root{
@@ -487,6 +487,9 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
 #sketch-canvas{width:100%;height:100%;background:#fff;border-radius:6px;touch-action:none;display:block;}
 .sk-status{flex:0 0 auto;padding:6px 10px;font-size:10px;color:var(--mu);background:var(--sf);border-top:1px solid var(--bd);}
 
+
+/* ── 位置図エディタ v2 ── */
+.sk-wrap{position:relative}.sk-help-btn{position:absolute;right:10px;top:8px;z-index:6;width:34px;height:34px;border-radius:50%;border:1px solid var(--bd);background:#fff;color:#111;font-size:18px;font-weight:900}.sk-help{display:none;position:absolute;right:10px;top:48px;z-index:7;width:min(270px,75vw);padding:12px;background:#fff;color:#111;border:2px solid #111;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.3);font-size:12px;line-height:1.7}.sk-help.open{display:block}.sk-props{display:none;gap:6px;align-items:center;padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--bd);overflow-x:auto;white-space:nowrap}.sk-props.show{display:flex}.sk-props label{font-size:10px;color:var(--mu)}.sk-props button{width:auto}.sk-props input{width:72px;padding:6px;font-size:12px}.sk-props select{background:var(--sf2);color:var(--tx);border:1px solid var(--bd);border-radius:6px;padding:6px}.sk-selected-note{font-size:10px;color:var(--ac)}
 </style>
 </head>
 <body>
@@ -824,6 +827,7 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
         <button class="sk-tool" onclick="skSavePng()">PNG保存</button>
       </div>
       <div class="sk-row">
+        <button class="sk-tool" data-sk-tool="select" onclick="skSetTool('select')">選択・調整</button>
         <button class="sk-tool active" data-sk-tool="pen" onclick="skSetTool('pen')">線</button>
         <button class="sk-tool" data-sk-tool="river" onclick="skSetTool('river')">川</button>
         <button class="sk-tool" data-sk-tool="bridge" onclick="skSetTool('bridge')">橋</button>
@@ -837,6 +841,15 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
         <button class="sk-tool" data-sk-tool="text" onclick="skSetTool('text')">文字</button>
       </div>
     </div>
+    <div class="sk-props" id="sk-props">
+      <span class="sk-selected-note" id="sk-selected-note">選択中</span>
+      <label id="sk-width-lbl">幅</label><input id="sk-width" type="number" min="0.01" max="0.5" step="0.01" value="0.10" onchange="skApplyProps()">
+      <label id="sk-piers-lbl">橋脚数</label><input id="sk-piers" type="number" min="0" max="12" step="1" value="3" onchange="skApplyProps()">
+      <label id="sk-length-lbl">長さ</label><input id="sk-length" type="number" min="0.02" max="0.60" step="0.01" value="0.12" onchange="skApplyProps()">
+      <button class="sk-tool" onclick="skDeleteSelected()">削除</button>
+    </div>
+    <button class="sk-help-btn" onclick="skToggleHelp()" aria-label="凡例">?</button>
+    <div class="sk-help" id="sk-help"><b>アイコン説明</b><br>◎ BM（基準点）<br>● 水位測量位置<br>▣ 水位標（上下端で長さ調整）<br>△ 器械設置位置<br>□ 局舎<br>二重線：橋／短線：橋脚<br>二重曲線：川・左右岸<br>太線：築堤・護岸<br>→ 方向<br><small>「選択・調整」で配置後の部品を移動できます。</small></div>
     <div class="sk-stage"><canvas id="sketch-canvas"></canvas></div>
     <div class="sk-status" id="sk-status">線：指でなぞる／記号：配置場所をタップ。平面図と断面図は別々に保存されます。</div>
   </div>
@@ -2323,30 +2336,34 @@ async function exportFrozenCsv(pkg){
   var r=await shareOrDownloadBlob(new Blob([csv],{type:'text/csv;charset=utf-8'}),fn,'前回の水準測量CSV');if(r&&r.ok){setSurveyDirty(false);recordCsvOutput(fn,'前回データ保存');return true;}return false;
 }
 
-/* ── 簡易ポンチ絵エディタ ── */
+/* ── 簡易ポンチ絵エディタ v2 ── */
 window.sketchStore=window.sketchStore||{plan:[],section:[]};
-var skView='plan',skTool='pen',skDrawing=null;
-function skSetView(v){skView=v;document.querySelectorAll('[data-sk-mode]').forEach(function(b){b.classList.toggle('active',b.dataset.skMode===v);});skDraw();}
-function skSetTool(t){skTool=t;document.querySelectorAll('[data-sk-tool]').forEach(function(b){b.classList.toggle('active',b.dataset.skTool===t);});document.getElementById('sk-status').textContent=(t==='pen'||t==='river'||t==='bridge'||t==='embankment'||t==='arrow')?'始点から終点へ指でなぞってください':'配置場所をタップしてください';}
+var skView='plan',skTool='pen',skDrawing=null,skSelected=-1,skDrag=null;
+function skSetView(v){skView=v;skSelected=-1;document.querySelectorAll('[data-sk-mode]').forEach(function(b){b.classList.toggle('active',b.dataset.skMode===v);});skShowProps();skDraw();}
+function skSetTool(t){skTool=t;skDrawing=null;document.querySelectorAll('[data-sk-tool]').forEach(function(b){b.classList.toggle('active',b.dataset.skTool===t);});document.getElementById('sk-status').textContent=t==='select'?'部品をタップして移動・調整できます':(['pen','river','bridge','embankment','arrow'].indexOf(t)>=0?'始点から終点へ指でなぞってください':'配置場所をタップしてください');}
 function skItems(){if(!window.sketchStore)window.sketchStore={plan:[],section:[]};return window.sketchStore[skView]||(window.sketchStore[skView]=[]);}
 function skPos(ev){var c=document.getElementById('sketch-canvas'),r=c.getBoundingClientRect(),t=ev.touches&&ev.touches[0]?ev.touches[0]:(ev.changedTouches&&ev.changedTouches[0]?ev.changedTouches[0]:ev);return{x:(t.clientX-r.left)/r.width,y:(t.clientY-r.top)/r.height};}
-function skDown(ev){ev.preventDefault();var p=skPos(ev);if(['pen','river','bridge','embankment','arrow'].indexOf(skTool)>=0){skDrawing={type:skTool,pts:[p]};}else{var label={bm:'BM',water:'水位測量',gauge:'水位標',instrument:'器械',station:'局舎'}[skTool]||'';if(skTool==='text')label=prompt('表示する文字を入力してください','')||'';if(!label)return;skItems().push({type:skTool,x:p.x,y:p.y,label:label});markSurveyDirty();skDraw();}}
-function skMove(ev){if(!skDrawing)return;ev.preventDefault();var p=skPos(ev);if(skTool==='pen')skDrawing.pts.push(p);else skDrawing.pts=[skDrawing.pts[0],p];skDraw();}
-function skUp(ev){if(!skDrawing)return;ev.preventDefault();if(skDrawing.pts.length>1){skItems().push(skDrawing);markSurveyDirty();}skDrawing=null;skDraw();}
-function skUndo(){skItems().pop();markSurveyDirty();skDraw();}
-function skClear(){if(confirm((skView==='plan'?'平面図':'断面図')+'を全消去しますか？')){window.sketchStore[skView]=[];markSurveyDirty();skDraw();}}
+function skDistSeg(p,a,b){var vx=b.x-a.x,vy=b.y-a.y,l=vx*vx+vy*vy;if(!l)return Math.hypot(p.x-a.x,p.y-a.y);var t=Math.max(0,Math.min(1,((p.x-a.x)*vx+(p.y-a.y)*vy)/l)),x=a.x+t*vx,y=a.y+t*vy;return Math.hypot(p.x-x,p.y-y);}
+function skHit(p){var a=skItems(),best=-1,bd=.045;for(var i=a.length-1;i>=0;i--){var it=a[i],d=9;if(it.pts&&it.pts.length>1){for(var j=1;j<it.pts.length;j++)d=Math.min(d,skDistSeg(p,it.pts[j-1],it.pts[j]));}else d=Math.hypot(p.x-it.x,p.y-it.y);if(d<bd){bd=d;best=i;}}return best;}
+function skDown(ev){ev.preventDefault();var p=skPos(ev);if(skTool==='select'){var h=skHit(p);skSelected=h;if(h>=0){var it=skItems()[h];skDrag={start:p,orig:JSON.parse(JSON.stringify(it)),handle:null};if(it.type==='gauge'){var a=it.angle||-Math.PI/2,L=it.length||.12,e={x:it.x+Math.cos(a)*L/2,y:it.y+Math.sin(a)*L/2};if(Math.hypot(p.x-e.x,p.y-e.y)<.05)skDrag.handle='end';}}skShowProps();skDraw();return;}
+ if(['pen','river','bridge','embankment','arrow'].indexOf(skTool)>=0){skDrawing={type:skTool,pts:[p],width:skTool==='river'?.10:(skTool==='bridge'?.07:.02),piers:skTool==='bridge'?3:0,smooth:skTool==='river'};}
+ else{var label={bm:'BM',water:'水位測量',gauge:'水位標',instrument:'器械',station:'局舎'}[skTool]||'';if(skTool==='text')label=prompt('表示する文字を入力してください','')||'';if(!label)return;skItems().push({type:skTool,x:p.x,y:p.y,label:label,length:skTool==='gauge'?.12:0,angle:-Math.PI/2});skSelected=skItems().length-1;markSurveyDirty();skShowProps();skDraw();}}
+function skMove(ev){var p=skPos(ev);if(skDrag&&skSelected>=0){ev.preventDefault();var it=skItems()[skSelected],o=skDrag.orig,dx=p.x-skDrag.start.x,dy=p.y-skDrag.start.y;if(skDrag.handle==='end'&&it.type==='gauge'){var vx=p.x-o.x,vy=p.y-o.y;it.length=Math.max(.02,Math.hypot(vx,vy)*2);it.angle=Math.atan2(vy,vx);}else if(it.pts){it.pts=o.pts.map(function(q){return{x:q.x+dx,y:q.y+dy};});}else{it.x=o.x+dx;it.y=o.y+dy;}skShowProps();skDraw();return;}if(!skDrawing)return;ev.preventDefault();if(skTool==='pen'||skTool==='river')skDrawing.pts.push(p);else skDrawing.pts=[skDrawing.pts[0],p];skDraw();}
+function skUp(ev){if(skDrag){skDrag=null;markSurveyDirty();return;}if(!skDrawing)return;ev.preventDefault();if(skDrawing.pts.length>1){if(skDrawing.type==='river')skDrawing.pts=skSmoothPts(skDrawing.pts,24);skItems().push(skDrawing);skSelected=skItems().length-1;markSurveyDirty();}skDrawing=null;skShowProps();skDraw();}
+function skSmoothPts(pts,max){if(pts.length<3)return pts;var step=Math.max(1,Math.floor(pts.length/max)),p=pts.filter(function(_,i){return i%step===0||i===pts.length-1;});for(var z=0;z<2;z++){var n=[p[0]];for(var i=0;i<p.length-1;i++){n.push({x:p[i].x*.75+p[i+1].x*.25,y:p[i].y*.75+p[i+1].y*.25},{x:p[i].x*.25+p[i+1].x*.75,y:p[i].y*.25+p[i+1].y*.75});}n.push(p[p.length-1]);p=n;}return p;}
+function skUndo(){skItems().pop();skSelected=-1;markSurveyDirty();skShowProps();skDraw();}
+function skClear(){if(confirm((skView==='plan'?'平面図':'断面図')+'を全消去しますか？')){window.sketchStore[skView]=[];skSelected=-1;markSurveyDirty();skShowProps();skDraw();}}
+function skDeleteSelected(){if(skSelected<0)return;skItems().splice(skSelected,1);skSelected=-1;markSurveyDirty();skShowProps();skDraw();}
+function skToggleHelp(){document.getElementById('sk-help').classList.toggle('open');}
+function skShowProps(){var bar=document.getElementById('sk-props'),it=skSelected>=0?skItems()[skSelected]:null;bar.classList.toggle('show',!!it);if(!it)return;document.getElementById('sk-selected-note').textContent='選択中：'+({river:'川',bridge:'橋',gauge:'水位標',bm:'BM',water:'水位測量',instrument:'器械',station:'局舎',embankment:'築堤',arrow:'方向',pen:'線',text:'文字'}[it.type]||it.type);document.getElementById('sk-width-lbl').style.display=/river|bridge/.test(it.type)?'':'none';document.getElementById('sk-width').style.display=/river|bridge/.test(it.type)?'':'none';document.getElementById('sk-piers-lbl').style.display=it.type==='bridge'?'':'none';document.getElementById('sk-piers').style.display=it.type==='bridge'?'':'none';document.getElementById('sk-length-lbl').style.display=it.type==='gauge'?'':'none';document.getElementById('sk-length').style.display=it.type==='gauge'?'':'none';if(it.width)document.getElementById('sk-width').value=it.width;if(it.piers!=null)document.getElementById('sk-piers').value=it.piers;if(it.length)document.getElementById('sk-length').value=it.length;}
+function skApplyProps(){if(skSelected<0)return;var it=skItems()[skSelected];if(/river|bridge/.test(it.type))it.width=Math.max(.01,Number(document.getElementById('sk-width').value)||.08);if(it.type==='bridge')it.piers=Math.max(0,Math.min(12,Number(document.getElementById('sk-piers').value)||0));if(it.type==='gauge')it.length=Math.max(.02,Number(document.getElementById('sk-length').value)||.12);markSurveyDirty();skDraw();}
 function skResize(){var c=document.getElementById('sketch-canvas');if(!c)return;var r=c.getBoundingClientRect(),d=window.devicePixelRatio||1;c.width=Math.max(300,Math.round(r.width*d));c.height=Math.max(300,Math.round(r.height*d));skDraw();}
-function skSymbol(ctx,it,W,H){var x=it.x*W,y=it.y*H,sz=Math.max(10,W/45);ctx.strokeStyle='#000';ctx.fillStyle='#000';ctx.lineWidth=Math.max(2,W/350);ctx.font='bold '+Math.max(12,W/45)+'px sans-serif';
- if(it.type==='bm'){ctx.beginPath();ctx.arc(x,y,sz*.65,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(x,y,sz*.2,0,Math.PI*2);ctx.fill();}
- else if(it.type==='water'){ctx.beginPath();ctx.arc(x,y,sz*.48,0,Math.PI*2);ctx.fill();}
- else if(it.type==='gauge'){ctx.strokeRect(x-sz*.45,y-sz*.75,sz*.9,sz*1.5);for(var k=-2;k<=2;k++)ctx.fillRect(x-sz*.35,y+k*sz*.25,sz*.3,2);}
- else if(it.type==='instrument'){ctx.beginPath();ctx.moveTo(x,y-sz*.7);ctx.lineTo(x-sz*.7,y+sz*.55);ctx.lineTo(x+sz*.7,y+sz*.55);ctx.closePath();ctx.stroke();}
- else if(it.type==='station'){ctx.strokeRect(x-sz*.7,y-sz*.45,sz*1.4,sz);ctx.beginPath();ctx.moveTo(x-sz*.85,y-sz*.45);ctx.lineTo(x,y-sz);ctx.lineTo(x+sz*.85,y-sz*.45);ctx.stroke();}
- ctx.fillText(it.label,x+sz,y-sz*.2);
-}
-function skRenderTo(ctx,W,H){ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.strokeStyle='#000';ctx.fillStyle='#000';ctx.lineWidth=Math.max(2,W/400);ctx.font='bold '+Math.max(15,W/35)+'px sans-serif';ctx.fillText(skView==='plan'?'平面図（測量位置図）':'断面図（測量位置図）',18,30);var ident=window.activeSurveyIdentity||readCurrentIdentity();ctx.font=Math.max(11,W/55)+'px sans-serif';ctx.fillText('地点名 '+(ident.place||''),18,52);ctx.strokeRect(8,8,W-16,H-16);
- var all=skItems().slice();if(skDrawing)all.push(skDrawing);all.forEach(function(it){if(it.pts){ctx.beginPath();it.pts.forEach(function(p,i){var x=p.x*W,y=p.y*H;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});if(it.type==='river'){ctx.lineWidth=Math.max(6,W/80);ctx.setLineDash([10,8]);}else if(it.type==='bridge'){ctx.lineWidth=Math.max(12,W/45);ctx.setLineDash([]);}else if(it.type==='embankment'){ctx.lineWidth=Math.max(5,W/100);ctx.setLineDash([]);}else{ctx.lineWidth=Math.max(2,W/400);ctx.setLineDash([]);}ctx.stroke();if(it.type==='arrow'&&it.pts.length>1){var a=it.pts[it.pts.length-2],b=it.pts[it.pts.length-1],ang=Math.atan2((b.y-a.y)*H,(b.x-a.x)*W);ctx.beginPath();ctx.moveTo(b.x*W,b.y*H);ctx.lineTo(b.x*W-18*Math.cos(ang-.5),b.y*H-18*Math.sin(ang-.5));ctx.moveTo(b.x*W,b.y*H);ctx.lineTo(b.x*W-18*Math.cos(ang+.5),b.y*H-18*Math.sin(ang+.5));ctx.stroke();}ctx.setLineDash([]);}else skSymbol(ctx,it,W,H);});}
-function skDraw(){var c=document.getElementById('sketch-canvas');if(!c)return;var ctx=c.getContext('2d');skRenderTo(ctx,c.width,c.height);}
+function skGlyph(ctx,it,W,H){var x=it.x*W,y=it.y*H,sz=Math.max(10,W/45);ctx.strokeStyle='#000';ctx.fillStyle='#000';ctx.lineWidth=Math.max(2,W/350);ctx.font='bold '+Math.max(12,W/45)+'px sans-serif';if(it.type==='bm'){ctx.beginPath();ctx.arc(x,y,sz*.65,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(x,y,sz*.2,0,Math.PI*2);ctx.fill();}else if(it.type==='water'){ctx.beginPath();ctx.arc(x,y,sz*.48,0,Math.PI*2);ctx.fill();}else if(it.type==='gauge'){var L=(it.length||.12)*Math.min(W,H),a=it.angle||-Math.PI/2,ux=Math.cos(a),uy=Math.sin(a),vx=-uy,vy=ux,x1=x-ux*L/2,y1=y-uy*L/2,x2=x+ux*L/2,y2=y+uy*L/2;ctx.lineWidth=Math.max(4,W/180);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.lineWidth=1;for(var k=-3;k<=3;k++){var t=k/7,px=x+ux*L*t,py=y+uy*L*t;ctx.beginPath();ctx.moveTo(px-vx*sz*.35,py-vy*sz*.35);ctx.lineTo(px+vx*(k%2?sz*.15:sz*.35),py+vy*(k%2?sz*.15:sz*.35));ctx.stroke();}}else if(it.type==='instrument'){ctx.beginPath();ctx.moveTo(x,y-sz*.7);ctx.lineTo(x-sz*.7,y+sz*.55);ctx.lineTo(x+sz*.7,y+sz*.55);ctx.closePath();ctx.stroke();}else if(it.type==='station'){ctx.strokeRect(x-sz*.7,y-sz*.45,sz*1.4,sz);ctx.beginPath();ctx.moveTo(x-sz*.85,y-sz*.45);ctx.lineTo(x,y-sz);ctx.lineTo(x+sz*.85,y-sz*.45);ctx.stroke();}ctx.fillText(it.label,x+sz,y-sz*.2);}
+function skOffsetPath(pts,off,W,H){return pts.map(function(p,i){var a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)],dx=(b.x-a.x)*W,dy=(b.y-a.y)*H,l=Math.hypot(dx,dy)||1;return{x:p.x*W-dy/l*off,y:p.y*H+dx/l*off};});}
+function skStrokePts(ctx,pts){ctx.beginPath();pts.forEach(function(p,i){i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y);});ctx.stroke();}
+function skRenderItem(ctx,it,W,H){if(!it.pts){skGlyph(ctx,it,W,H);return;}var raw=it.pts.map(function(p){return{x:p.x*W,y:p.y*H};}),off=(it.width||.08)*Math.min(W,H)/2;ctx.strokeStyle='#000';ctx.lineCap='round';ctx.lineJoin='round';ctx.setLineDash([]);if(it.type==='river'){ctx.lineWidth=Math.max(2,W/500);skStrokePts(ctx,skOffsetPath(it.pts,off,W,H));skStrokePts(ctx,skOffsetPath(it.pts,-off,W,H));ctx.font=Math.max(12,W/48)+'px sans-serif';var m=raw[Math.floor(raw.length/2)];ctx.fillText('川',m.x+8,m.y);}else if(it.type==='bridge'){ctx.lineWidth=Math.max(2,W/450);var l=skOffsetPath(it.pts,off,W,H),r=skOffsetPath(it.pts,-off,W,H);skStrokePts(ctx,l);skStrokePts(ctx,r);var a=raw[0],b=raw[raw.length-1],pi=it.piers==null?3:it.piers;for(var k=1;k<=pi;k++){var t=k/(pi+1),x=a.x+(b.x-a.x)*t,y=a.y+(b.y-a.y)*t,ang=Math.atan2(b.y-a.y,b.x-a.x),nx=-Math.sin(ang),ny=Math.cos(ang);ctx.beginPath();ctx.moveTo(x-nx*off,y-ny*off);ctx.lineTo(x+nx*off,y+ny*off);ctx.stroke();ctx.font=Math.max(10,W/65)+'px sans-serif';ctx.fillText('P'+k,x+5,y-5);}ctx.font=Math.max(12,W/48)+'px sans-serif';ctx.fillText('橋',(a.x+b.x)/2+8,(a.y+b.y)/2);}else{ctx.lineWidth=it.type==='embankment'?Math.max(5,W/120):Math.max(2,W/450);skStrokePts(ctx,raw);if(it.type==='arrow'&&raw.length>1){var q=raw[raw.length-2],z=raw[raw.length-1],an=Math.atan2(z.y-q.y,z.x-q.x);ctx.beginPath();ctx.moveTo(z.x,z.y);ctx.lineTo(z.x-18*Math.cos(an-.5),z.y-18*Math.sin(an-.5));ctx.moveTo(z.x,z.y);ctx.lineTo(z.x-18*Math.cos(an+.5),z.y-18*Math.sin(an+.5));ctx.stroke();}}}
+function skRenderTo(ctx,W,H){ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.strokeStyle='#000';ctx.fillStyle='#000';ctx.lineWidth=Math.max(2,W/400);ctx.font='bold '+Math.max(15,W/35)+'px sans-serif';ctx.fillText(skView==='plan'?'平面図（測量位置図）':'断面図（測量位置図）',18,30);var ident=window.activeSurveyIdentity||readCurrentIdentity();ctx.font=Math.max(11,W/55)+'px sans-serif';ctx.fillText('地点名 '+(ident.place||''),18,52);ctx.strokeRect(8,8,W-16,H-16);var all=skItems().slice();if(skDrawing)all.push(skDrawing);all.forEach(function(it){skRenderItem(ctx,it,W,H);});if(skSelected>=0&&skSelected<skItems().length){var it=skItems()[skSelected];ctx.strokeStyle='#4f8ef7';ctx.lineWidth=2;ctx.setLineDash([6,4]);if(it.pts){var xs=it.pts.map(function(p){return p.x*W}),ys=it.pts.map(function(p){return p.y*H}),x=Math.min.apply(null,xs)-10,y=Math.min.apply(null,ys)-10,w=Math.max.apply(null,xs)-x+10,h=Math.max.apply(null,ys)-y+10;ctx.strokeRect(x,y,w,h);}else{ctx.strokeRect(it.x*W-30,it.y*H-30,60,60);}ctx.setLineDash([]);}}
+function skDraw(){var c=document.getElementById('sketch-canvas');if(!c)return;skRenderTo(c.getContext('2d'),c.width,c.height);}
 function skSavePng(){var c=document.createElement('canvas');c.width=1600;c.height=1000;skRenderTo(c.getContext('2d'),c.width,c.height);c.toBlob(async function(blob){var n=skView==='plan'?'plan':'section';await shareOrDownloadBlob(blob,surveyFileBase('survey_'+n)+'.png','測量位置図');},'image/png');}
 (function(){var c=document.getElementById('sketch-canvas');if(!c)return;c.addEventListener('mousedown',skDown);c.addEventListener('mousemove',skMove);window.addEventListener('mouseup',skUp);c.addEventListener('touchstart',skDown,{passive:false});c.addEventListener('touchmove',skMove,{passive:false});window.addEventListener('touchend',skUp,{passive:false});window.addEventListener('resize',function(){var t=document.getElementById('tab-sketch');if(t&&t.classList.contains('active'))skResize();});})();
 
@@ -2415,7 +2432,7 @@ updateCsvHeader();
     return;
   }
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./sw.js?v=20261119-02', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261119-03', {scope:'./'})
       .then(function(reg){
         console.log('Service Worker registered:', reg.scope);
         if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
