@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="水準測量野帳">
 <link rel="apple-touch-icon" sizes="180x180" href="level-icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="level-icon-192.png">
-<link rel="manifest" href="manifest.webmanifest?v=20261119-03">
+<link rel="manifest" href="manifest.webmanifest?v=20261119-04">
 
 <style>
 :root{
@@ -490,6 +490,7 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
 
 /* ── 位置図エディタ v2 ── */
 .sk-wrap{position:relative}.sk-help-btn{position:absolute;right:10px;top:8px;z-index:6;width:34px;height:34px;border-radius:50%;border:1px solid var(--bd);background:#fff;color:#111;font-size:18px;font-weight:900}.sk-help{display:none;position:absolute;right:10px;top:48px;z-index:7;width:min(270px,75vw);padding:12px;background:#fff;color:#111;border:2px solid #111;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.3);font-size:12px;line-height:1.7}.sk-help.open{display:block}.sk-props{display:none;gap:6px;align-items:center;padding:6px 10px;background:var(--sf);border-bottom:1px solid var(--bd);overflow-x:auto;white-space:nowrap}.sk-props.show{display:flex}.sk-props label{font-size:10px;color:var(--mu)}.sk-props button{width:auto}.sk-props input{width:72px;padding:6px;font-size:12px}.sk-props select{background:var(--sf2);color:var(--tx);border:1px solid var(--bd);border-radius:6px;padding:6px}.sk-selected-note{font-size:10px;color:var(--ac)}
+.sk-stage{overflow:auto!important}.sketch-zoomed{min-width:100%;min-height:100%}
 </style>
 </head>
 <body>
@@ -824,11 +825,11 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
         <button class="sk-tool" data-sk-mode="section" onclick="skSetView('section')">断面図</button>
         <button class="sk-tool" onclick="skUndo()">↩ 戻す</button>
         <button class="sk-tool" onclick="skClear()">全消去</button>
-        <button class="sk-tool" onclick="skSavePng()">PNG保存</button>
+        <button class="sk-tool" onclick="skZoomBy(1.25)">＋拡大</button><button class="sk-tool" onclick="skZoomBy(0.8)">－縮小</button><button class="sk-tool" onclick="skZoomReset()">全体</button><button class="sk-tool" onclick="skSavePng()">PNG保存</button>
       </div>
       <div class="sk-row">
         <button class="sk-tool" data-sk-tool="select" onclick="skSetTool('select')">選択・調整</button>
-        <button class="sk-tool active" data-sk-tool="pen" onclick="skSetTool('pen')">線</button>
+        <button class="sk-tool active" data-sk-tool="pen" onclick="skSetTool('pen')">フリーハンド</button><button class="sk-tool" data-sk-tool="straight" onclick="skSetTool('straight')">直線</button>
         <button class="sk-tool" data-sk-tool="river" onclick="skSetTool('river')">川</button>
         <button class="sk-tool" data-sk-tool="bridge" onclick="skSetTool('bridge')">橋</button>
         <button class="sk-tool" data-sk-tool="embankment" onclick="skSetTool('embankment')">築堤</button>
@@ -836,7 +837,7 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
         <button class="sk-tool" data-sk-tool="water" onclick="skSetTool('water')">● 水位測量</button>
         <button class="sk-tool" data-sk-tool="gauge" onclick="skSetTool('gauge')">▣ 水位標</button>
         <button class="sk-tool" data-sk-tool="instrument" onclick="skSetTool('instrument')">△ 器械</button>
-        <button class="sk-tool" data-sk-tool="station" onclick="skSetTool('station')">□ 局舎</button>
+        <button class="sk-tool" data-sk-tool="station" onclick="skSetTool('station')">□ 局舎</button><button class="sk-tool" data-sk-tool="hsteel" onclick="skSetTool('hsteel')">H H鋼</button>
         <button class="sk-tool" data-sk-tool="arrow" onclick="skSetTool('arrow')">→ 方向</button>
         <button class="sk-tool" data-sk-tool="text" onclick="skSetTool('text')">文字</button>
       </div>
@@ -844,12 +845,12 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
     <div class="sk-props" id="sk-props">
       <span class="sk-selected-note" id="sk-selected-note">選択中</span>
       <label id="sk-width-lbl">幅</label><input id="sk-width" type="number" min="0.01" max="0.5" step="0.01" value="0.10" onchange="skApplyProps()">
-      <label id="sk-piers-lbl">橋脚数</label><input id="sk-piers" type="number" min="0" max="12" step="1" value="3" onchange="skApplyProps()">
+      <button class="sk-tool" id="sk-line-convert" onclick="skConvertLineMode()" style="display:none">直線化</button>
       <label id="sk-length-lbl">長さ</label><input id="sk-length" type="number" min="0.02" max="0.60" step="0.01" value="0.12" onchange="skApplyProps()">
       <button class="sk-tool" onclick="skDeleteSelected()">削除</button>
     </div>
     <button class="sk-help-btn" onclick="skToggleHelp()" aria-label="凡例">?</button>
-    <div class="sk-help" id="sk-help"><b>アイコン説明</b><br>◎ BM（基準点）<br>● 水位測量位置<br>▣ 水位標（上下端で長さ調整）<br>△ 器械設置位置<br>□ 局舎<br>二重線：橋／短線：橋脚<br>二重曲線：川・左右岸<br>太線：築堤・護岸<br>→ 方向<br><small>「選択・調整」で配置後の部品を移動できます。</small></div>
+    <div class="sk-help" id="sk-help"><b>アイコン説明</b><br>◎ BM（基準点）<br>● 水位測量位置<br>▣ 水位標（上下端で長さ調整）<br>△ 器械設置位置<br>□ 局舎<br>H H鋼<br>二重線＋両端45°：橋<br>二重曲線：川・左右岸<br>太線：築堤・護岸<br>→ 方向<br><small>「選択・調整」で配置後の部品を移動できます。</small></div>
     <div class="sk-stage"><canvas id="sketch-canvas"></canvas></div>
     <div class="sk-status" id="sk-status">線：指でなぞる／記号：配置場所をタップ。平面図と断面図は別々に保存されます。</div>
   </div>
@@ -2432,7 +2433,7 @@ updateCsvHeader();
     return;
   }
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./sw.js?v=20261119-03', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261119-04', {scope:'./'})
       .then(function(reg){
         console.log('Service Worker registered:', reg.scope);
         if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
@@ -2676,6 +2677,21 @@ async function xpSaveImage(){if(!xp.img){alert('写真を選択してくださ�
     });
   });
 })();
+</script>
+<script>
+/* 位置図エディタ v3 overrides */
+var skZoom=1;
+function skZoomBy(f){skZoom=Math.max(.5,Math.min(4,skZoom*f));var c=document.getElementById('sketch-canvas');c.style.width=(skZoom*100)+'%';c.style.height=(skZoom*100)+'%';setTimeout(skResize,20);}
+function skZoomReset(){skZoom=1;var c=document.getElementById('sketch-canvas');c.style.width='100%';c.style.height='100%';setTimeout(skResize,20);}
+function skConvertLineMode(){if(skSelected<0)return;var it=skItems()[skSelected];if(it.type==='pen'){it.type='straight';it.pts=[it.pts[0],it.pts[it.pts.length-1]];}else if(it.type==='straight')it.type='pen';markSurveyDirty();skShowProps();skDraw();}
+var _skOldSetTool=skSetTool;skSetTool=function(t){_skOldSetTool(t);};
+var _skOldShowProps=skShowProps;skShowProps=function(){var bar=document.getElementById('sk-props'),it=skSelected>=0?skItems()[skSelected]:null;bar.classList.toggle('show',!!it);if(!it)return;var names={river:'川',bridge:'橋',gauge:'水位標',bm:'BM',water:'水位測量',instrument:'器械',station:'局舎',hsteel:'H鋼',embankment:'築堤',arrow:'方向',pen:'フリーハンド',straight:'直線',text:'文字'};document.getElementById('sk-selected-note').textContent='選択中：'+(names[it.type]||it.type);var width=/river|bridge/.test(it.type),len=it.type==='gauge',conv=/pen|straight/.test(it.type);document.getElementById('sk-width-lbl').style.display=width?'':'none';document.getElementById('sk-width').style.display=width?'':'none';document.getElementById('sk-length-lbl').style.display=len?'':'none';document.getElementById('sk-length').style.display=len?'':'none';var cb=document.getElementById('sk-line-convert');if(cb){cb.style.display=conv?'':'none';cb.textContent=it.type==='pen'?'直線化':'フリーハンド化';}var pl=document.getElementById('sk-piers-lbl'),pi=document.getElementById('sk-piers');if(pl)pl.style.display='none';if(pi)pi.style.display='none';if(it.width)document.getElementById('sk-width').value=it.width;if(it.length)document.getElementById('sk-length').value=it.length;};
+function skApplyProps(){if(skSelected<0)return;var it=skItems()[skSelected];if(/river|bridge/.test(it.type))it.width=Math.max(.01,Number(document.getElementById('sk-width').value)||.08);if(it.type==='gauge')it.length=Math.max(.02,Number(document.getElementById('sk-length').value)||.12);markSurveyDirty();skDraw();}
+function skDown(ev){ev.preventDefault();var p=skPos(ev);if(skTool==='select'){var h=skHit(p);skSelected=h;if(h>=0){var it=skItems()[h];skDrag={start:p,orig:JSON.parse(JSON.stringify(it)),handle:null};if(it.pts&&(it.type==='river'||it.type==='pen')){var ni=-1,nd=.055;it.pts.forEach(function(q,qi){var d=Math.hypot(p.x-q.x,p.y-q.y);if(d<nd){nd=d;ni=qi;}});if(ni>=0)skDrag.handle='point:'+ni;}if(it.type==='gauge'){var a=it.angle||0,L=it.length||.12,e={x:it.x+Math.cos(a)*L/2,y:it.y+Math.sin(a)*L/2};if(Math.hypot(p.x-e.x,p.y-e.y)<.06)skDrag.handle='end';}}skShowProps();skDraw();return;}if(['pen','straight','river','bridge','embankment','arrow','gauge'].indexOf(skTool)>=0){skDrawing={type:skTool,pts:[p],width:skTool==='river'?.10:(skTool==='bridge'?.07:.02)};return;}var label={bm:'BM',water:'水位測量',instrument:'器械',station:'局舎',hsteel:'H鋼'}[skTool]||'';if(skTool==='text')label=prompt('表示する文字を入力してください','')||'';if(!label)return;skItems().push({type:skTool,x:p.x,y:p.y,label:label});skSelected=skItems().length-1;markSurveyDirty();skShowProps();skDraw();}
+function skMove(ev){var p=skPos(ev);if(skDrag&&skSelected>=0){ev.preventDefault();var it=skItems()[skSelected],o=skDrag.orig,dx=p.x-skDrag.start.x,dy=p.y-skDrag.start.y;if(skDrag.handle==='end'&&it.type==='gauge'){var vx=p.x-o.x,vy=p.y-o.y;it.length=Math.max(.02,Math.hypot(vx,vy)*2);it.angle=Math.atan2(vy,vx);}else if(skDrag.handle&&skDrag.handle.indexOf('point:')===0&&it.pts){var pi=parseInt(skDrag.handle.split(':')[1]);it.pts=JSON.parse(JSON.stringify(o.pts));it.pts[pi]={x:p.x,y:p.y};}else if(it.pts)it.pts=o.pts.map(function(q){return{x:q.x+dx,y:q.y+dy};});else{it.x=o.x+dx;it.y=o.y+dy;}skShowProps();skDraw();return;}if(!skDrawing)return;ev.preventDefault();if(skTool==='pen'||skTool==='river')skDrawing.pts.push(p);else skDrawing.pts=[skDrawing.pts[0],p];skDraw();}
+function skUp(ev){if(skDrag){skDrag=null;markSurveyDirty();return;}if(!skDrawing)return;ev.preventDefault();if(skDrawing.pts.length>1){if(skDrawing.type==='river')skDrawing.pts=skSmoothPts(skDrawing.pts,24);if(skDrawing.type==='gauge'){var a=skDrawing.pts[0],b=skDrawing.pts[skDrawing.pts.length-1];skItems().push({type:'gauge',x:(a.x+b.x)/2,y:(a.y+b.y)/2,label:'水位標',length:Math.max(.02,Math.hypot(b.x-a.x,b.y-a.y)*2),angle:Math.atan2(b.y-a.y,b.x-a.x)});}else skItems().push(skDrawing);skSelected=skItems().length-1;markSurveyDirty();}skDrawing=null;skShowProps();skDraw();}
+var _skOldGlyph=skGlyph;skGlyph=function(ctx,it,W,H){if(it.type==='hsteel'){var x=it.x*W,y=it.y*H,sz=Math.max(10,W/45);ctx.fillStyle='#000';ctx.font='bold '+(sz*1.8)+'px sans-serif';ctx.fillText('H',x-sz*.55,y+sz*.55);ctx.font='bold '+Math.max(12,W/45)+'px sans-serif';ctx.fillText(it.label,x+sz,y-sz*.2);return;}_skOldGlyph(ctx,it,W,H);};
+var _skOldRenderItem=skRenderItem;skRenderItem=function(ctx,it,W,H){if(it.type!=='bridge'){_skOldRenderItem(ctx,it,W,H);return;}var raw=it.pts.map(function(p){return{x:p.x*W,y:p.y*H};}),off=(it.width||.07)*Math.min(W,H)/2,l=skOffsetPath(it.pts,off,W,H),r=skOffsetPath(it.pts,-off,W,H);ctx.strokeStyle='#000';ctx.lineWidth=Math.max(2,W/450);ctx.lineCap='round';skStrokePts(ctx,l);skStrokePts(ctx,r);var a=raw[0],b=raw[raw.length-1],ang=Math.atan2(b.y-a.y,b.x-a.x),ux=Math.cos(ang),uy=Math.sin(ang),nx=-uy,ny=ux,cap=Math.max(12,off*.9);function cap45(c,dir){ctx.beginPath();ctx.moveTo(c.x+nx*off,c.y+ny*off);ctx.lineTo(c.x+nx*off+dir*(ux+nx)*cap,c.y+ny*off+dir*(uy+ny)*cap);ctx.moveTo(c.x-nx*off,c.y-ny*off);ctx.lineTo(c.x-nx*off+dir*(ux-nx)*cap,c.y-ny*off+dir*(uy-ny)*cap);ctx.stroke();}cap45(a,-1);cap45(b,1);ctx.font=Math.max(12,W/48)+'px sans-serif';ctx.fillText('橋',(a.x+b.x)/2+8,(a.y+b.y)/2);};
 </script>
 </body>
 </html>
