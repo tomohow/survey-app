@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="水準測量野帳">
 <link rel="apple-touch-icon" sizes="180x180" href="level-icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="level-icon-192.png">
-<link rel="manifest" href="manifest.webmanifest?v=20261119-04">
+<link rel="manifest" href="manifest.webmanifest?v=20261119-05">
 
 <style>
 :root{
@@ -2433,7 +2433,7 @@ updateCsvHeader();
     return;
   }
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./sw.js?v=20261119-04', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261119-05', {scope:'./'})
       .then(function(reg){
         console.log('Service Worker registered:', reg.scope);
         if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
@@ -2680,6 +2680,7 @@ async function xpSaveImage(){if(!xp.img){alert('写真を選択してくださ�
 </script>
 <script>
 /* 位置図エディタ v3 overrides */
+var _skBoundDown=skDown,_skBoundMove=skMove,_skBoundUp=skUp;
 var skZoom=1;
 function skZoomBy(f){skZoom=Math.max(.5,Math.min(4,skZoom*f));var c=document.getElementById('sketch-canvas');c.style.width=(skZoom*100)+'%';c.style.height=(skZoom*100)+'%';setTimeout(skResize,20);}
 function skZoomReset(){skZoom=1;var c=document.getElementById('sketch-canvas');c.style.width='100%';c.style.height='100%';setTimeout(skResize,20);}
@@ -2691,7 +2692,36 @@ function skDown(ev){ev.preventDefault();var p=skPos(ev);if(skTool==='select'){va
 function skMove(ev){var p=skPos(ev);if(skDrag&&skSelected>=0){ev.preventDefault();var it=skItems()[skSelected],o=skDrag.orig,dx=p.x-skDrag.start.x,dy=p.y-skDrag.start.y;if(skDrag.handle==='end'&&it.type==='gauge'){var vx=p.x-o.x,vy=p.y-o.y;it.length=Math.max(.02,Math.hypot(vx,vy)*2);it.angle=Math.atan2(vy,vx);}else if(skDrag.handle&&skDrag.handle.indexOf('point:')===0&&it.pts){var pi=parseInt(skDrag.handle.split(':')[1]);it.pts=JSON.parse(JSON.stringify(o.pts));it.pts[pi]={x:p.x,y:p.y};}else if(it.pts)it.pts=o.pts.map(function(q){return{x:q.x+dx,y:q.y+dy};});else{it.x=o.x+dx;it.y=o.y+dy;}skShowProps();skDraw();return;}if(!skDrawing)return;ev.preventDefault();if(skTool==='pen'||skTool==='river')skDrawing.pts.push(p);else skDrawing.pts=[skDrawing.pts[0],p];skDraw();}
 function skUp(ev){if(skDrag){skDrag=null;markSurveyDirty();return;}if(!skDrawing)return;ev.preventDefault();if(skDrawing.pts.length>1){if(skDrawing.type==='river')skDrawing.pts=skSmoothPts(skDrawing.pts,24);if(skDrawing.type==='gauge'){var a=skDrawing.pts[0],b=skDrawing.pts[skDrawing.pts.length-1];skItems().push({type:'gauge',x:(a.x+b.x)/2,y:(a.y+b.y)/2,label:'水位標',length:Math.max(.02,Math.hypot(b.x-a.x,b.y-a.y)*2),angle:Math.atan2(b.y-a.y,b.x-a.x)});}else skItems().push(skDrawing);skSelected=skItems().length-1;markSurveyDirty();}skDrawing=null;skShowProps();skDraw();}
 var _skOldGlyph=skGlyph;skGlyph=function(ctx,it,W,H){if(it.type==='hsteel'){var x=it.x*W,y=it.y*H,sz=Math.max(10,W/45);ctx.fillStyle='#000';ctx.font='bold '+(sz*1.8)+'px sans-serif';ctx.fillText('H',x-sz*.55,y+sz*.55);ctx.font='bold '+Math.max(12,W/45)+'px sans-serif';ctx.fillText(it.label,x+sz,y-sz*.2);return;}_skOldGlyph(ctx,it,W,H);};
-var _skOldRenderItem=skRenderItem;skRenderItem=function(ctx,it,W,H){if(it.type!=='bridge'){_skOldRenderItem(ctx,it,W,H);return;}var raw=it.pts.map(function(p){return{x:p.x*W,y:p.y*H};}),off=(it.width||.07)*Math.min(W,H)/2,l=skOffsetPath(it.pts,off,W,H),r=skOffsetPath(it.pts,-off,W,H);ctx.strokeStyle='#000';ctx.lineWidth=Math.max(2,W/450);ctx.lineCap='round';skStrokePts(ctx,l);skStrokePts(ctx,r);var a=raw[0],b=raw[raw.length-1],ang=Math.atan2(b.y-a.y,b.x-a.x),ux=Math.cos(ang),uy=Math.sin(ang),nx=-uy,ny=ux,cap=Math.max(12,off*.9);function cap45(c,dir){ctx.beginPath();ctx.moveTo(c.x+nx*off,c.y+ny*off);ctx.lineTo(c.x+nx*off+dir*(ux+nx)*cap,c.y+ny*off+dir*(uy+ny)*cap);ctx.moveTo(c.x-nx*off,c.y-ny*off);ctx.lineTo(c.x-nx*off+dir*(ux-nx)*cap,c.y-ny*off+dir*(uy-ny)*cap);ctx.stroke();}cap45(a,-1);cap45(b,1);ctx.font=Math.max(12,W/48)+'px sans-serif';ctx.fillText('橋',(a.x+b.x)/2+8,(a.y+b.y)/2);};
+var _skOldRenderItem=skRenderItem;skRenderItem=function(ctx,it,W,H){if(it.type!=='bridge'){_skOldRenderItem(ctx,it,W,H);return;}var raw=it.pts.map(function(p){return{x:p.x*W,y:p.y*H};}),off=(it.width||.07)*Math.min(W,H)/2,l=skOffsetPath(it.pts,off,W,H),r=skOffsetPath(it.pts,-off,W,H);ctx.strokeStyle='#000';ctx.lineWidth=Math.max(2,W/450);ctx.lineCap='round';skStrokePts(ctx,l);skStrokePts(ctx,r);var a=raw[0],b=raw[raw.length-1],ang=Math.atan2(b.y-a.y,b.x-a.x),ux=Math.cos(ang),uy=Math.sin(ang),nx=-uy,ny=ux,cap=Math.max(12,off*.9);function cap45(c,dir){var tx=c.x+dir*ux*cap,ty=c.y+dir*uy*cap;ctx.beginPath();ctx.moveTo(c.x+nx*off,c.y+ny*off);ctx.lineTo(tx,ty);ctx.moveTo(c.x-nx*off,c.y-ny*off);ctx.lineTo(tx,ty);ctx.stroke();}cap45(a,-1);cap45(b,1);ctx.font=Math.max(12,W/48)+'px sans-serif';ctx.fillText('橋',(a.x+b.x)/2+8,(a.y+b.y)/2);};
+
+/* v3.1: rebind canvas events so newly added tools use the corrected handlers. */
+(function skRebindEditor(){
+  var c=document.getElementById('sketch-canvas'); if(!c) return;
+  c.removeEventListener('mousedown',_skBoundDown);
+  c.removeEventListener('mousemove',_skBoundMove);
+  window.removeEventListener('mouseup',_skBoundUp);
+  c.removeEventListener('touchstart',_skBoundDown);
+  c.removeEventListener('touchmove',_skBoundMove);
+  window.removeEventListener('touchend',_skBoundUp);
+  var pinch=null;
+  function tpoint(t){var r=c.getBoundingClientRect();return{x:t.clientX-r.left,y:t.clientY-r.top};}
+  function tdist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)||1;}
+  function onTouchStart(e){
+    if(e.touches.length>=2){e.preventDefault();var a=tpoint(e.touches[0]),b=tpoint(e.touches[1]);pinch={dist:tdist(a,b),zoom:skZoom};skDrawing=null;skDrag=null;return;}
+    skDown(e);
+  }
+  function onTouchMove(e){
+    if(pinch&&e.touches.length>=2){e.preventDefault();var a=tpoint(e.touches[0]),b=tpoint(e.touches[1]);var z=Math.max(.5,Math.min(4,pinch.zoom*tdist(a,b)/pinch.dist));skZoom=z;c.style.width=(z*100)+'%';c.style.height=(z*100)+'%';return;}
+    skMove(e);
+  }
+  function onTouchEnd(e){if(pinch){if(!e.touches||e.touches.length<2){pinch=null;setTimeout(skResize,20);}return;}skUp(e);}
+  c.addEventListener('mousedown',skDown);
+  c.addEventListener('mousemove',skMove);
+  window.addEventListener('mouseup',skUp);
+  c.addEventListener('touchstart',onTouchStart,{passive:false});
+  c.addEventListener('touchmove',onTouchMove,{passive:false});
+  window.addEventListener('touchend',onTouchEnd,{passive:false});
+})();
 </script>
 </body>
 </html>
