@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="水準測量野帳">
 <link rel="apple-touch-icon" sizes="180x180" href="level-icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="level-icon-192.png">
-<link rel="manifest" href="manifest.webmanifest?v=20261102-03">
+<link rel="manifest" href="manifest.webmanifest?v=20261119-02">
 
 <style>
 :root{
@@ -476,6 +476,17 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
 .datetime-row .now-btn{width:92px!important;min-width:92px;padding:10px 6px;font-size:11px;height:42px;}
 .save-state.unsaved{border-color:rgba(248,113,113,.55);background:rgba(248,113,113,.12);}.save-state.unsaved .csv-h-lbl{color:var(--mn);}
 
+
+/* ── 簡易ポンチ絵 ── */
+.sk-wrap{display:flex;flex-direction:column;height:100%;min-height:0;background:var(--bg);}
+.sk-toolbar{flex:0 0 auto;padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--bd);overflow-x:auto;white-space:nowrap;}
+.sk-row{display:flex;gap:6px;margin-bottom:6px;}.sk-row:last-child{margin-bottom:0;}
+.sk-tool{flex:0 0 auto;padding:7px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--sf2);color:var(--tx);font-size:11px;font-weight:700;}
+.sk-tool.active{border-color:var(--ac);background:rgba(79,142,247,.25);color:#fff;}
+.sk-stage{flex:1 1 auto;min-height:0;padding:8px;display:flex;background:#777;}
+#sketch-canvas{width:100%;height:100%;background:#fff;border-radius:6px;touch-action:none;display:block;}
+.sk-status{flex:0 0 auto;padding:6px 10px;font-size:10px;color:var(--mu);background:var(--sf);border-top:1px solid var(--bd);}
+
 </style>
 </head>
 <body>
@@ -522,6 +533,7 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
     <button class="tab" data-tab="measure">測定</button>
     <button class="tab" data-tab="graph">グラフ</button>
     <button class="tab" data-tab="env">環境</button>
+    <button class="tab" data-tab="sketch">位置図</button>
   </div>
 </div>
 
@@ -799,6 +811,37 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
   </div>
 </div>
 
+
+<!-- 簡易ポンチ絵 -->
+<div class="sec" id="tab-sketch">
+  <div class="sk-wrap">
+    <div class="sk-toolbar">
+      <div class="sk-row">
+        <button class="sk-tool active" data-sk-mode="plan" onclick="skSetView('plan')">平面図</button>
+        <button class="sk-tool" data-sk-mode="section" onclick="skSetView('section')">断面図</button>
+        <button class="sk-tool" onclick="skUndo()">↩ 戻す</button>
+        <button class="sk-tool" onclick="skClear()">全消去</button>
+        <button class="sk-tool" onclick="skSavePng()">PNG保存</button>
+      </div>
+      <div class="sk-row">
+        <button class="sk-tool active" data-sk-tool="pen" onclick="skSetTool('pen')">線</button>
+        <button class="sk-tool" data-sk-tool="river" onclick="skSetTool('river')">川</button>
+        <button class="sk-tool" data-sk-tool="bridge" onclick="skSetTool('bridge')">橋</button>
+        <button class="sk-tool" data-sk-tool="embankment" onclick="skSetTool('embankment')">築堤</button>
+        <button class="sk-tool" data-sk-tool="bm" onclick="skSetTool('bm')">◎ BM</button>
+        <button class="sk-tool" data-sk-tool="water" onclick="skSetTool('water')">● 水位測量</button>
+        <button class="sk-tool" data-sk-tool="gauge" onclick="skSetTool('gauge')">▣ 水位標</button>
+        <button class="sk-tool" data-sk-tool="instrument" onclick="skSetTool('instrument')">△ 器械</button>
+        <button class="sk-tool" data-sk-tool="station" onclick="skSetTool('station')">□ 局舎</button>
+        <button class="sk-tool" data-sk-tool="arrow" onclick="skSetTool('arrow')">→ 方向</button>
+        <button class="sk-tool" data-sk-tool="text" onclick="skSetTool('text')">文字</button>
+      </div>
+    </div>
+    <div class="sk-stage"><canvas id="sketch-canvas"></canvas></div>
+    <div class="sk-status" id="sk-status">線：指でなぞる／記号：配置場所をタップ。平面図と断面図は別々に保存されます。</div>
+  </div>
+</div>
+
 <!-- グラフ -->
 <div class="sec" id="tab-graph">
   <div class="graph-scroll">
@@ -905,21 +948,26 @@ function switchTab(n){
   var target = document.getElementById('tab-'+n);
   if(target) target.classList.add('active');
   if(n==='graph') drawChart('chart-full');
+  if(n==='sketch') setTimeout(skResize,50);
 }
 
 /* ── BM設定 ── */
 async function setInit(){
   const gh=parseFloat(document.getElementById('initGH').value);
   if(isNaN(gh)){alert('初期GHを入力してください');return;}
+  /* 重要：新規測定の入力欄で前回基本情報が書き換わる前に、前回情報を固定コピーして保存する */
   if(data.length>1 && isSurveyDirty()){
-    if(confirm('前回の測定内容に未保存の変更があります。CSVを保存してから新しい測定を開始しますか？')){
-      const ok=await downloadCSV(); if(!ok) return;
+    const previous=buildFrozenWorkPackage();
+    if(confirm('前回の測定内容に未保存の変更があります。前回の地点名・日時・観測者を固定した状態で保存しますか？')){
+      const ok=await exportFrozenCsv(previous); if(!ok) return;
     }else if(!confirm('前回内容を保存せず、新しい測定を開始しますか？')) return;
   }
   if(data.length) saveLastBackup();
   baseIH=gh;
   const nm=document.getElementById('bmName').value||'BM';
   data=[{point:nm,isBM:true,gh,use:true,ihOverride:null}];
+  window.activeSurveyIdentity=readCurrentIdentity();
+  window.sketchStore={plan:[],section:[]};
   markSurveyDirty(); save(); switchTab('measure');
 }
 
@@ -1031,6 +1079,8 @@ function getPayload(){
     siteId:(window.selectedSite&&window.selectedSite.id)||'',
     masterUpdatedAt:(window.selectedSite&&window.selectedSite.updatedAt)||'',
     dirty:isSurveyDirty(),
+    surveyIdentity:window.activeSurveyIdentity||null,
+    sketches:window.sketchStore||{plan:[],section:[]},
     ts:Date.now()
   };
 }
@@ -1041,6 +1091,8 @@ function applyPayload(o){
   if(o.ob1)   document.getElementById('observer1').value=o.ob1;
   if(o.ob2)   document.getElementById('observer2').value=o.ob2;
   if(o.siteId){ var s=(window.SITE_MASTER||[]).find(function(v){return v.id===o.siteId;}); if(s) selectSiteMaster(s.id,false); }
+  window.activeSurveyIdentity=o.surveyIdentity||snapshotSurveyIdentity(o);
+  window.sketchStore=o.sketches||{plan:[],section:[]};
 }
 
 function save(clean){
@@ -1289,13 +1341,14 @@ function drawChart(id){
 
 /* ── CSV ── */
 async function downloadCSV(){
-  const p=document.getElementById('place').value;
-  const o1=document.getElementById('observer1').value;
-  const o2=document.getElementById('observer2').value;
-  const dt=document.getElementById('survey-date').value;
+  const ident=window.activeSurveyIdentity||readCurrentIdentity();
+  const p=ident.place||document.getElementById('place').value;
+  const o1=ident.ob1||'';
+  const o2=ident.ob2||'';
+  const dt=ident.surveyDate||document.getElementById('survey-date').value;
   let csv='\uFEFF';
   csv+='地点名,'+p+'\n';
-  if(window.selectedSite){csv+='共通地点ID,'+selectedSite.id+'\n';csv+='緯度,'+selectedSite.lat+'\n';csv+='経度,'+selectedSite.lon+'\n';csv+='マスター更新日,'+selectedSite.updatedAt+'\n';}
+  if(ident.siteId){csv+='共通地点ID,'+ident.siteId+'\n';csv+='緯度,'+(ident.lat||'')+'\n';csv+='経度,'+(ident.lon||'')+'\n';csv+='マスター更新日,'+(ident.masterUpdatedAt||'')+'\n';}
   csv+='観測者①,'+o1+'\n';
   csv+='観測者②,'+o2+'\n';
   csv+='測定日時,'+dt+'\n\n';
@@ -1350,6 +1403,7 @@ function loadAndRender(){
       ?(idbData.ts>=lsData.ts?idbData:lsData)
       :(idbData||lsData);
     applyPayload(best);
+    if(!window.activeSurveyIdentity) window.activeSurveyIdentity=snapshotSurveyIdentity(best||{});
     updateSurveyDateNow(false);
     initMasterUI();
     render();
@@ -2253,6 +2307,49 @@ function restoreLastBackup(){try{var o=JSON.parse(localStorage.getItem('lvl4_las
 async function exportWorkData(){var obj={format:'level-survey-work',version:1,exportedAt:new Date().toISOString(),survey:getPayload(),sections:getSectionHist(),siteMasterVersion:(SITE_MASTER[0]&&SITE_MASTER[0].updatedAt)||''};var blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});var fn=surveyFileBase('level_work')+'.json';var result=await shareOrDownloadBlob(blob,fn,'水準測量 作業データ');if(result&&result.ok){setSurveyDirty(false);recordCsvOutput(fn,'作業データ保存');save(true);}}
 (function(){var input=document.getElementById('work-import-input');if(!input)return;input.addEventListener('change',function(){var file=this.files[0];this.value='';if(!file)return;var rd=new FileReader();rd.onload=function(e){try{var o=JSON.parse(e.target.result),p=o.survey||o;if(!p||!Array.isArray(p.data))throw new Error('対応する作業データではありません');if(data.length)saveLastBackup();applyPayload(p);if(p.surveyDate)document.getElementById('survey-date').value=p.surveyDate;if(Array.isArray(o.sections))saveSectionHist(o.sections);setSurveyDirty(true);save();refreshSectionSel();initMasterUI();alert('作業データを読み込みました');}catch(ex){alert('読込エラー: '+ex.message);}};rd.readAsText(file);});})();
 
+
+/* ── 測定案件の基本情報固定 ── */
+window.activeSurveyIdentity=null;
+function readCurrentIdentity(){
+  var s=window.selectedSite;
+  return {place:document.getElementById('place').value,ob1:document.getElementById('observer1').value,ob2:document.getElementById('observer2').value,surveyDate:document.getElementById('survey-date').value,siteId:s?s.id:'',lat:s?s.lat:'',lon:s?s.lon:'',masterUpdatedAt:s?s.updatedAt:''};
+}
+function snapshotSurveyIdentity(o){return {place:o&&o.place||'',ob1:o&&o.ob1||'',ob2:o&&o.ob2||'',surveyDate:o&&o.surveyDate||'',siteId:o&&o.siteId||'',masterUpdatedAt:o&&o.masterUpdatedAt||''};}
+function buildFrozenWorkPackage(){return {identity:Object.assign({},window.activeSurveyIdentity||readCurrentIdentity()),data:JSON.parse(JSON.stringify(data)),baseIH:baseIH,sketches:JSON.parse(JSON.stringify(window.sketchStore||{plan:[],section:[]}))};}
+async function exportFrozenCsv(pkg){
+  var i=pkg.identity||{},csv='\uFEFF';csv+='地点名,'+(i.place||'')+'\n';csv+='観測者①,'+(i.ob1||'')+'\n';csv+='観測者②,'+(i.ob2||'')+'\n';csv+='測定日時,'+(i.surveyDate||'')+'\n\n';csv+='測点,SP,IH,FS,GH\n';
+  (pkg.data||[]).forEach(function(d){csv+=(d.point||'')+','+(d.sp!==''&&d.sp!=null?d.sp:'')+','+(d.ih!=null?d.ih:'')+','+(d.fs!==''&&d.fs!=null?d.fs:'')+','+(d.gh!==''&&d.gh!=null?d.gh:'')+'\n';});
+  var stamp=(i.surveyDate||nowLocalValue()).replace('T','_').replace(/[-:]/g,''),fn='level_'+stamp+'_'+(safeFilePart(i.place)||'地点未設定')+'.csv';
+  var r=await shareOrDownloadBlob(new Blob([csv],{type:'text/csv;charset=utf-8'}),fn,'前回の水準測量CSV');if(r&&r.ok){setSurveyDirty(false);recordCsvOutput(fn,'前回データ保存');return true;}return false;
+}
+
+/* ── 簡易ポンチ絵エディタ ── */
+window.sketchStore=window.sketchStore||{plan:[],section:[]};
+var skView='plan',skTool='pen',skDrawing=null;
+function skSetView(v){skView=v;document.querySelectorAll('[data-sk-mode]').forEach(function(b){b.classList.toggle('active',b.dataset.skMode===v);});skDraw();}
+function skSetTool(t){skTool=t;document.querySelectorAll('[data-sk-tool]').forEach(function(b){b.classList.toggle('active',b.dataset.skTool===t);});document.getElementById('sk-status').textContent=(t==='pen'||t==='river'||t==='bridge'||t==='embankment'||t==='arrow')?'始点から終点へ指でなぞってください':'配置場所をタップしてください';}
+function skItems(){if(!window.sketchStore)window.sketchStore={plan:[],section:[]};return window.sketchStore[skView]||(window.sketchStore[skView]=[]);}
+function skPos(ev){var c=document.getElementById('sketch-canvas'),r=c.getBoundingClientRect(),t=ev.touches&&ev.touches[0]?ev.touches[0]:(ev.changedTouches&&ev.changedTouches[0]?ev.changedTouches[0]:ev);return{x:(t.clientX-r.left)/r.width,y:(t.clientY-r.top)/r.height};}
+function skDown(ev){ev.preventDefault();var p=skPos(ev);if(['pen','river','bridge','embankment','arrow'].indexOf(skTool)>=0){skDrawing={type:skTool,pts:[p]};}else{var label={bm:'BM',water:'水位測量',gauge:'水位標',instrument:'器械',station:'局舎'}[skTool]||'';if(skTool==='text')label=prompt('表示する文字を入力してください','')||'';if(!label)return;skItems().push({type:skTool,x:p.x,y:p.y,label:label});markSurveyDirty();skDraw();}}
+function skMove(ev){if(!skDrawing)return;ev.preventDefault();var p=skPos(ev);if(skTool==='pen')skDrawing.pts.push(p);else skDrawing.pts=[skDrawing.pts[0],p];skDraw();}
+function skUp(ev){if(!skDrawing)return;ev.preventDefault();if(skDrawing.pts.length>1){skItems().push(skDrawing);markSurveyDirty();}skDrawing=null;skDraw();}
+function skUndo(){skItems().pop();markSurveyDirty();skDraw();}
+function skClear(){if(confirm((skView==='plan'?'平面図':'断面図')+'を全消去しますか？')){window.sketchStore[skView]=[];markSurveyDirty();skDraw();}}
+function skResize(){var c=document.getElementById('sketch-canvas');if(!c)return;var r=c.getBoundingClientRect(),d=window.devicePixelRatio||1;c.width=Math.max(300,Math.round(r.width*d));c.height=Math.max(300,Math.round(r.height*d));skDraw();}
+function skSymbol(ctx,it,W,H){var x=it.x*W,y=it.y*H,sz=Math.max(10,W/45);ctx.strokeStyle='#000';ctx.fillStyle='#000';ctx.lineWidth=Math.max(2,W/350);ctx.font='bold '+Math.max(12,W/45)+'px sans-serif';
+ if(it.type==='bm'){ctx.beginPath();ctx.arc(x,y,sz*.65,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(x,y,sz*.2,0,Math.PI*2);ctx.fill();}
+ else if(it.type==='water'){ctx.beginPath();ctx.arc(x,y,sz*.48,0,Math.PI*2);ctx.fill();}
+ else if(it.type==='gauge'){ctx.strokeRect(x-sz*.45,y-sz*.75,sz*.9,sz*1.5);for(var k=-2;k<=2;k++)ctx.fillRect(x-sz*.35,y+k*sz*.25,sz*.3,2);}
+ else if(it.type==='instrument'){ctx.beginPath();ctx.moveTo(x,y-sz*.7);ctx.lineTo(x-sz*.7,y+sz*.55);ctx.lineTo(x+sz*.7,y+sz*.55);ctx.closePath();ctx.stroke();}
+ else if(it.type==='station'){ctx.strokeRect(x-sz*.7,y-sz*.45,sz*1.4,sz);ctx.beginPath();ctx.moveTo(x-sz*.85,y-sz*.45);ctx.lineTo(x,y-sz);ctx.lineTo(x+sz*.85,y-sz*.45);ctx.stroke();}
+ ctx.fillText(it.label,x+sz,y-sz*.2);
+}
+function skRenderTo(ctx,W,H){ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.strokeStyle='#000';ctx.fillStyle='#000';ctx.lineWidth=Math.max(2,W/400);ctx.font='bold '+Math.max(15,W/35)+'px sans-serif';ctx.fillText(skView==='plan'?'平面図（測量位置図）':'断面図（測量位置図）',18,30);var ident=window.activeSurveyIdentity||readCurrentIdentity();ctx.font=Math.max(11,W/55)+'px sans-serif';ctx.fillText('地点名 '+(ident.place||''),18,52);ctx.strokeRect(8,8,W-16,H-16);
+ var all=skItems().slice();if(skDrawing)all.push(skDrawing);all.forEach(function(it){if(it.pts){ctx.beginPath();it.pts.forEach(function(p,i){var x=p.x*W,y=p.y*H;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});if(it.type==='river'){ctx.lineWidth=Math.max(6,W/80);ctx.setLineDash([10,8]);}else if(it.type==='bridge'){ctx.lineWidth=Math.max(12,W/45);ctx.setLineDash([]);}else if(it.type==='embankment'){ctx.lineWidth=Math.max(5,W/100);ctx.setLineDash([]);}else{ctx.lineWidth=Math.max(2,W/400);ctx.setLineDash([]);}ctx.stroke();if(it.type==='arrow'&&it.pts.length>1){var a=it.pts[it.pts.length-2],b=it.pts[it.pts.length-1],ang=Math.atan2((b.y-a.y)*H,(b.x-a.x)*W);ctx.beginPath();ctx.moveTo(b.x*W,b.y*H);ctx.lineTo(b.x*W-18*Math.cos(ang-.5),b.y*H-18*Math.sin(ang-.5));ctx.moveTo(b.x*W,b.y*H);ctx.lineTo(b.x*W-18*Math.cos(ang+.5),b.y*H-18*Math.sin(ang+.5));ctx.stroke();}ctx.setLineDash([]);}else skSymbol(ctx,it,W,H);});}
+function skDraw(){var c=document.getElementById('sketch-canvas');if(!c)return;var ctx=c.getContext('2d');skRenderTo(ctx,c.width,c.height);}
+function skSavePng(){var c=document.createElement('canvas');c.width=1600;c.height=1000;skRenderTo(c.getContext('2d'),c.width,c.height);c.toBlob(async function(blob){var n=skView==='plan'?'plan':'section';await shareOrDownloadBlob(blob,surveyFileBase('survey_'+n)+'.png','測量位置図');},'image/png');}
+(function(){var c=document.getElementById('sketch-canvas');if(!c)return;c.addEventListener('mousedown',skDown);c.addEventListener('mousemove',skMove);window.addEventListener('mouseup',skUp);c.addEventListener('touchstart',skDown,{passive:false});c.addEventListener('touchmove',skMove,{passive:false});window.addEventListener('touchend',skUp,{passive:false});window.addEventListener('resize',function(){var t=document.getElementById('tab-sketch');if(t&&t.classList.contains('active'))skResize();});})();
+
 /* ══════════════════════════════════════════════
    断面履歴（グラフタブ）
 ══════════════════════════════════════════════ */
@@ -2318,7 +2415,7 @@ updateCsvHeader();
     return;
   }
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./sw.js?v=20261102-03', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261119-02', {scope:'./'})
       .then(function(reg){
         console.log('Service Worker registered:', reg.scope);
         if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
