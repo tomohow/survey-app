@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="水準測量野帳">
 <link rel="apple-touch-icon" sizes="180x180" href="level-icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="level-icon-192.png">
-<link rel="manifest" href="manifest.webmanifest?v=20261120-06">
+<link rel="manifest" href="manifest.webmanifest?v=20261120-07">
 
 <style>
 :root{
@@ -2433,7 +2433,7 @@ updateCsvHeader();
     return;
   }
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./sw.js?v=20261120-06', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261120-07', {scope:'./'})
       .then(function(reg){
         console.log('Service Worker registered:', reg.scope);
         if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
@@ -2952,42 +2952,68 @@ var _skOldRenderItem=skRenderItem;skRenderItem=function(ctx,it,W,H){if(it.type!=
 </script>
 
 <script>
-/* 平面図記号拡張 v11：道・築堤、落差工、斜面、丸 */
+/* 位置図 最終処理 v12：水位標・斜面・落差工・道幅 */
 (function(){
-  var prevDown=skDown,prevShow=skShowProps,prevApply=skApplyProps,prevRender=skRenderItem;
+  var oldDown=skDown,oldShow=skShowProps,oldApply=skApplyProps,oldRender=skRenderItem;
+
   skDown=function(ev){
     if(skTool==='circle'){
-      ev.preventDefault();var p=skPos(ev);skItems().push({type:'circle',x:p.x,y:p.y,label:'',size:.60});skSelected=skItems().length-1;markSurveyDirty();skShowProps();skDraw();return;
+      ev.preventDefault();var p=skPos(ev);skItems().push({type:'circle',x:p.x,y:p.y,label:'',size:.60});
+      skSelected=skItems().length-1;markSurveyDirty();skShowProps();skDraw();return;
     }
-    if(['drop','slope'].indexOf(skTool)>=0){ev.preventDefault();var p=skPos(ev);skDrawing={type:skTool,pts:[p],width:skTool==='slope'?.09:.055,reverse:false};return;}
-    prevDown(ev);
+    if(skTool==='drop'||skTool==='slope'){
+      ev.preventDefault();var p=skPos(ev);skDrawing={type:skTool,pts:[p],width:skTool==='slope'?.10:.07};return;
+    }
+    var before=skItems().length;oldDown(ev);var list=skItems();
+    if(list.length>before){var it=list[list.length-1];if(!it.pts&&it.type!=='gauge'&&(it.size===undefined||it.size===null))it.size=.60;if(it.type==='hsteel'||it.type==='gauge')it.label='';skDraw();}
   };
-  /* 既存move/upはskDrawingの2点線として処理可能。確定後も選択・移動できる。 */
+
   skShowProps=function(){
-    prevShow();var it=skSelected>=0?skItems()[skSelected]:null;if(!it)return;
-    var canWidth=/river|bridge|embankment|drop|slope/.test(it.type),wl=document.getElementById('sk-width-lbl'),wi=document.getElementById('sk-width');
-    if(wl)wl.style.display=canWidth?'':'none';if(wi){wi.style.display=canWidth?'':'none';if(canWidth)wi.value=it.width||.06;}
-    var names={embankment:'道・築堤',drop:'落差工',slope:'斜面',circle:'丸'};if(names[it.type])document.getElementById('sk-selected-note').textContent='選択中：'+names[it.type];
+    oldShow();var it=skSelected>=0?skItems()[skSelected]:null;if(!it)return;
+    var width=/river|bridge|embankment|drop|slope/.test(it.type),wl=document.getElementById('sk-width-lbl'),wi=document.getElementById('sk-width');
+    if(wl)wl.style.display=width?'':'none';if(wi){wi.style.display=width?'':'none';if(width)wi.value=it.width||(it.type==='embankment'?.12:.08);}
+    var names={embankment:'道・築堤',drop:'落差工',slope:'斜面',circle:'丸',gauge:'水位標',hsteel:'H鋼'};
+    if(names[it.type])document.getElementById('sk-selected-note').textContent='選択中：'+names[it.type];
   };
-  skApplyProps=function(){prevApply();var it=skSelected>=0?skItems()[skSelected]:null;if(it&&/embankment|drop|slope/.test(it.type))it.width=Math.max(.02,Math.min(.30,Number(document.getElementById('sk-width').value)||.07));markSurveyDirty();skDraw();};
-  function parallel(ctx,it,W,H){var off=(it.width||.07)*Math.min(W,H)/2,left=skOffsetPath(it.pts,off,W,H),right=skOffsetPath(it.pts,-off,W,H);ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(2,W/500);ctx.lineCap='round';ctx.lineJoin='round';skStrokePts(ctx,left);skStrokePts(ctx,right);ctx.restore();return{left:left,right:right};}
-  function hatch(ctx,left,right,W,mode){
-    if(left.length<2||right.length<2)return;var n=Math.max(4,Math.min(18,Math.round(Math.hypot(left[left.length-1].x-left[0].x,left[left.length-1].y-left[0].y)/28)));
+  skApplyProps=function(){
+    oldApply();var it=skSelected>=0?skItems()[skSelected]:null;
+    if(it&&/embankment|drop|slope/.test(it.type))it.width=Math.max(.02,Math.min(.35,Number(document.getElementById('sk-width').value)||(it.type==='embankment'?.12:.08)));
+    markSurveyDirty();skDraw();
+  };
+
+  function parallel(ctx,it,W,H){
+    var off=(it.width||(it.type==='embankment'?.12:.08))*Math.min(W,H)/2;
+    var L=skOffsetPath(it.pts,off,W,H),R=skOffsetPath(it.pts,-off,W,H);
+    ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(2,W/500);ctx.lineCap='round';ctx.lineJoin='round';skStrokePts(ctx,L);skStrokePts(ctx,R);ctx.restore();return{L:L,R:R};
+  }
+  function hatches(ctx,L,R,W,shortSide){
+    if(L.length<2||R.length<2)return;
+    var ax=L[0],bx=L[L.length-1],length=Math.hypot(bx.x-ax.x,bx.y-ax.y),n=Math.max(4,Math.min(18,Math.round(length/30)));
     ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,W/850);
-    for(var k=1;k<n;k++){var t=k/n,li=Math.min(left.length-1,Math.round(t*(left.length-1))),ri=Math.min(right.length-1,Math.round(t*(right.length-1))),a=left[li],b=right[ri];
-      var ex=mode==='drop'?(a.x+(b.x-a.x)*.72):b.x,ey=mode==='drop'?(a.y+(b.y-a.y)*.72):b.y;
-      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(ex,ey);ctx.stroke();}
+    for(var k=1;k<n;k++){var i=Math.round(k/n*(L.length-1)),j=Math.round(k/n*(R.length-1)),a=L[i],b=R[j];var rate=shortSide?.72:1;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(a.x+(b.x-a.x)*rate,a.y+(b.y-a.y)*rate);ctx.stroke();}
+    ctx.restore();
+  }
+  function gauge(ctx,it,W,H){
+    var x=it.x*W,y=it.y*H,a=(it.angle===undefined||it.angle===null)?0:it.angle,L=Math.max(20,(it.length||.12)*Math.min(W,H));
+    var sc=it.size||1,half=Math.max(4,Math.min(11,W/120))*sc,ux=Math.cos(a),uy=Math.sin(a),nx=-uy,ny=ux;
+    var x1=x-ux*L/2,y1=y-uy*L/2,x2=x+ux*L/2,y2=y+uy*L/2;
+    ctx.save();ctx.strokeStyle='#000';ctx.fillStyle='#fff';ctx.lineWidth=Math.max(1.3,W/700);ctx.lineJoin='miter';
+    ctx.beginPath();ctx.moveTo(x1+nx*half,y1+ny*half);ctx.lineTo(x2+nx*half,y2+ny*half);ctx.lineTo(x2-nx*half,y2-ny*half);ctx.lineTo(x1-nx*half,y1-ny*half);ctx.closePath();ctx.fill();ctx.stroke();
+    for(var k=0;k<=20;k++){var t=-.5+k/20,px=x+ux*L*t,py=y+uy*L*t,tick=(k%10===0?half*.82:(k%5===0?half*.66:(k%2===0?half*.48:half*.32)));ctx.beginPath();ctx.moveTo(px+nx*half,py+ny*half);ctx.lineTo(px+nx*(half-tick),py+ny*(half-tick));ctx.moveTo(px-nx*half,py-ny*half);ctx.lineTo(px-nx*(half-tick),py-ny*(half-tick));ctx.stroke();}
     ctx.restore();
   }
   skRenderItem=function(ctx,it,W,H){
+    if(it.type==='gauge'){gauge(ctx,it,W,H);return;}
     if(it.type==='embankment'){parallel(ctx,it,W,H);return;}
-    if(it.type==='slope'){var q=parallel(ctx,it,W,H);hatch(ctx,q.left,q.right,W,'slope');return;}
-    if(it.type==='drop'){var q=parallel(ctx,it,W,H);hatch(ctx,q.left,q.right,W,'drop');return;}
+    if(it.type==='slope'){var q=parallel(ctx,it,W,H);hatches(ctx,q.L,q.R,W,false);return;}
+    if(it.type==='drop'){var q=parallel(ctx,it,W,H);hatches(ctx,q.L,q.R,W,true);return;}
     if(it.type==='circle'){var r=Math.max(5,W/75)*(it.size||.60);ctx.save();ctx.strokeStyle='#000';ctx.fillStyle='#fff';ctx.lineWidth=Math.max(1.4,W/650);ctx.beginPath();ctx.arc(it.x*W,it.y*H,r,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();return;}
     if(it.type==='hsteel'){var z=Math.max(10,W/45)*(it.size||.60);ctx.save();ctx.fillStyle='#000';ctx.font='bold '+z*1.8+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('H',it.x*W,it.y*H);ctx.restore();return;}
-    prevRender(ctx,it,W,H);
+    oldRender(ctx,it,W,H);
   };
-  /* 既存の築堤は道・築堤として同じ二重線描画になる。 */
+
+  /* 既存データにも今回の表示を適用 */
+  ['plan','section'].forEach(function(v){(window.sketchStore&&window.sketchStore[v]||[]).forEach(function(it){if(it.type==='gauge'||it.type==='hsteel')it.label='';if(!it.pts&&it.type!=='gauge'&&(it.size===undefined||it.size===null))it.size=.60;if(it.type==='embankment'&&!it.width)it.width=.12;});});
   skDraw();
 })();
 </script>
