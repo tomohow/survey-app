@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="水準測量野帳">
 <link rel="apple-touch-icon" sizes="180x180" href="level-icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="level-icon-192.png">
-<link rel="manifest" href="manifest.webmanifest?v=20261120-12">
+<link rel="manifest" href="manifest.webmanifest?v=20261120-13">
 
 <style>
 :root{
@@ -2365,7 +2365,29 @@ function skStrokePts(ctx,pts){ctx.beginPath();pts.forEach(function(p,i){i?ctx.li
 function skRenderItem(ctx,it,W,H){if(!it.pts){skGlyph(ctx,it,W,H);return;}var raw=it.pts.map(function(p){return{x:p.x*W,y:p.y*H};}),off=(it.width||.08)*Math.min(W,H)/2;ctx.strokeStyle='#000';ctx.lineCap='round';ctx.lineJoin='round';ctx.setLineDash([]);if(it.type==='river'){ctx.lineWidth=Math.max(2,W/500);skStrokePts(ctx,skOffsetPath(it.pts,off,W,H));skStrokePts(ctx,skOffsetPath(it.pts,-off,W,H));ctx.font=Math.max(12,W/48)+'px sans-serif';var m=raw[Math.floor(raw.length/2)];ctx.fillText('川',m.x+8,m.y);}else if(it.type==='bridge'){ctx.lineWidth=Math.max(2,W/450);var l=skOffsetPath(it.pts,off,W,H),r=skOffsetPath(it.pts,-off,W,H);skStrokePts(ctx,l);skStrokePts(ctx,r);var a=raw[0],b=raw[raw.length-1],pi=it.piers==null?3:it.piers;for(var k=1;k<=pi;k++){var t=k/(pi+1),x=a.x+(b.x-a.x)*t,y=a.y+(b.y-a.y)*t,ang=Math.atan2(b.y-a.y,b.x-a.x),nx=-Math.sin(ang),ny=Math.cos(ang);ctx.beginPath();ctx.moveTo(x-nx*off,y-ny*off);ctx.lineTo(x+nx*off,y+ny*off);ctx.stroke();ctx.font=Math.max(10,W/65)+'px sans-serif';ctx.fillText('P'+k,x+5,y-5);}ctx.font=Math.max(12,W/48)+'px sans-serif';ctx.fillText('橋',(a.x+b.x)/2+8,(a.y+b.y)/2);}else{ctx.lineWidth=it.type==='embankment'?Math.max(5,W/120):Math.max(2,W/450);skStrokePts(ctx,raw);if(it.type==='arrow'&&raw.length>1){var q=raw[raw.length-2],z=raw[raw.length-1],an=Math.atan2(z.y-q.y,z.x-q.x);ctx.beginPath();ctx.moveTo(z.x,z.y);ctx.lineTo(z.x-18*Math.cos(an-.5),z.y-18*Math.sin(an-.5));ctx.moveTo(z.x,z.y);ctx.lineTo(z.x-18*Math.cos(an+.5),z.y-18*Math.sin(an+.5));ctx.stroke();}}}
 function skRenderTo(ctx,W,H){ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.strokeStyle='#000';ctx.fillStyle='#000';ctx.lineWidth=Math.max(2,W/400);ctx.font='bold '+Math.max(15,W/35)+'px sans-serif';ctx.fillText(skView==='plan'?'平面図（測量位置図）':'断面図（測量位置図）',18,30);var ident=window.activeSurveyIdentity||readCurrentIdentity();ctx.font=Math.max(11,W/55)+'px sans-serif';ctx.fillText('地点名 '+(ident.place||''),18,52);ctx.strokeRect(8,8,W-16,H-16);var all=skItems().slice();if(skDrawing)all.push(skDrawing);all.forEach(function(it){skRenderItem(ctx,it,W,H);});if(skSelected>=0&&skSelected<skItems().length){var it=skItems()[skSelected];ctx.strokeStyle='#4f8ef7';ctx.lineWidth=2;ctx.setLineDash([6,4]);if(it.pts){var xs=it.pts.map(function(p){return p.x*W}),ys=it.pts.map(function(p){return p.y*H}),x=Math.min.apply(null,xs)-10,y=Math.min.apply(null,ys)-10,w=Math.max.apply(null,xs)-x+10,h=Math.max.apply(null,ys)-y+10;ctx.strokeRect(x,y,w,h);}else{ctx.strokeRect(it.x*W-30,it.y*H-30,60,60);}ctx.setLineDash([]);}}
 function skDraw(){var c=document.getElementById('sketch-canvas');if(!c)return;skRenderTo(c.getContext('2d'),c.width,c.height);}
-function skSavePng(){var c=document.createElement('canvas');c.width=1600;c.height=1000;skRenderTo(c.getContext('2d'),c.width,c.height);c.toBlob(async function(blob){var n=skView==='plan'?'plan':'section';await shareOrDownloadBlob(blob,surveyFileBase('survey_'+n)+'.png','測量位置図');},'image/png');}
+function skSavePng(){
+  var src=document.getElementById('sketch-canvas');
+  if(!src||!src.width||!src.height){alert('位置図を表示してから保存してください');return;}
+  /* 画面と同じCanvasをそのまま画像化する。別寸法で再作図しないため位置・幅・文字がずれない。 */
+  var keepSelected=skSelected;
+  skSelected=-1;
+  skDraw();
+  var scale=2;
+  var out=document.createElement('canvas');
+  out.width=src.width*scale;
+  out.height=src.height*scale;
+  var octx=out.getContext('2d');
+  octx.imageSmoothingEnabled=true;
+  octx.imageSmoothingQuality='high';
+  octx.drawImage(src,0,0,out.width,out.height);
+  skSelected=keepSelected;
+  skDraw();
+  out.toBlob(async function(blob){
+    if(!blob){alert('PNG保存に失敗しました');return;}
+    var n=skView==='plan'?'plan':'section';
+    await shareOrDownloadBlob(blob,surveyFileBase('survey_'+n)+'.png','測量位置図');
+  },'image/png');
+}
 (function(){var c=document.getElementById('sketch-canvas');if(!c)return;c.addEventListener('mousedown',skDown);c.addEventListener('mousemove',skMove);window.addEventListener('mouseup',skUp);c.addEventListener('touchstart',skDown,{passive:false});c.addEventListener('touchmove',skMove,{passive:false});window.addEventListener('touchend',skUp,{passive:false});window.addEventListener('resize',function(){var t=document.getElementById('tab-sketch');if(t&&t.classList.contains('active'))skResize();});})();
 
 /* ══════════════════════════════════════════════
@@ -2433,7 +2455,7 @@ updateCsvHeader();
     return;
   }
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./sw.js?v=20261120-12', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261120-13', {scope:'./'})
       .then(function(reg){
         console.log('Service Worker registered:', reg.scope);
         if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
