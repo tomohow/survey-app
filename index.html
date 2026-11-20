@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="水準測量野帳">
 <link rel="apple-touch-icon" sizes="180x180" href="level-icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="level-icon-192.png">
-<link rel="manifest" href="manifest.webmanifest?v=20261120-02">
+<link rel="manifest" href="manifest.webmanifest?v=20261120-03">
 
 <style>
 :root{
@@ -2433,7 +2433,7 @@ updateCsvHeader();
     return;
   }
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./sw.js?v=20261120-02', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261120-03', {scope:'./'})
       .then(function(reg){
         console.log('Service Worker registered:', reg.scope);
         if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
@@ -2865,6 +2865,60 @@ var _skOldRenderItem=skRenderItem;skRenderItem=function(ctx,it,W,H){if(it.type!=
     e.forEach(function(q){ctx.beginPath();ctx.arc(q.x*W,q.y*H,r,0,Math.PI*2);ctx.fill();ctx.stroke();});
     /* rotation handle above the centre */var nx=-uy,ny=ux,R={x:it.x+nx*.09,y:it.y+ny*.09};ctx.beginPath();ctx.moveTo(it.x*W,it.y*H);ctx.lineTo(R.x*W,R.y*H);ctx.stroke();ctx.beginPath();ctx.arc(R.x*W,R.y*H,r*.8,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
   };
+})();
+</script>
+
+<script>
+/* 位置図入力イベント統合 v8：旧イベントを完全除去し、橋・川と同じリアルタイム操作へ統一 */
+(function(){
+  /* 水位標も線要素として当たり判定し、両端を確実に選択できるようにする */
+  var priorHit=skHit;
+  skHit=function(p){
+    var list=skItems(),best=-1,bd=.055;
+    for(var i=list.length-1;i>=0;i--){
+      var it=list[i],d=99;
+      if(it.type==='gauge'){
+        var a=(it.angle===undefined||it.angle===null)?0:it.angle,L=it.length||.12;
+        var q1={x:it.x-Math.cos(a)*L/2,y:it.y-Math.sin(a)*L/2};
+        var q2={x:it.x+Math.cos(a)*L/2,y:it.y+Math.sin(a)*L/2};
+        d=skDistSeg(p,q1,q2);
+      }else if(it.pts&&it.pts.length>1){
+        for(var j=1;j<it.pts.length;j++)d=Math.min(d,skDistSeg(p,it.pts[j-1],it.pts[j]));
+      }else d=Math.hypot(p.x-it.x,p.y-it.y);
+      if(d<bd){bd=d;best=i;}
+    }
+    return best;
+  };
+
+  /* 既存canvasを複製して、過去版で重複登録されたmouse/touchイベントを一括除去 */
+  var oldCanvas=document.getElementById('sketch-canvas');if(!oldCanvas)return;
+  var canvas=oldCanvas.cloneNode(true);
+  oldCanvas.parentNode.replaceChild(canvas,oldCanvas);
+  canvas.style.touchAction='none';
+  var active=false,pinch=null;
+  function localPoint(ev){var r=canvas.getBoundingClientRect();return{x:(ev.clientX-r.left)/r.width,y:(ev.clientY-r.top)/r.height};}
+  function proxyEvent(ev){var p=localPoint(ev);return{preventDefault:function(){ev.preventDefault();},clientX:ev.clientX,clientY:ev.clientY,touches:null,changedTouches:null,_p:p};}
+  /* skPosをcanvasの現在サイズに対して一意に計算 */
+  skPos=function(ev){if(ev&&ev._p)return ev._p;var r=canvas.getBoundingClientRect(),t=ev.touches&&ev.touches[0]?ev.touches[0]:(ev.changedTouches&&ev.changedTouches[0]?ev.changedTouches[0]:ev);return{x:(t.clientX-r.left)/r.width,y:(t.clientY-r.top)/r.height};};
+  canvas.addEventListener('pointerdown',function(ev){
+    if(ev.pointerType==='touch'&&pinch)return;
+    ev.preventDefault();canvas.setPointerCapture&&canvas.setPointerCapture(ev.pointerId);active=true;skDown(proxyEvent(ev));
+  });
+  canvas.addEventListener('pointermove',function(ev){if(!active)return;ev.preventDefault();skMove(proxyEvent(ev));});
+  function finish(ev){if(!active)return;ev.preventDefault();active=false;skUp(proxyEvent(ev));}
+  canvas.addEventListener('pointerup',finish);canvas.addEventListener('pointercancel',finish);
+
+  /* ピンチは2点間距離で拡大縮小。作図中は開始しない */
+  canvas.addEventListener('touchstart',function(ev){
+    if(ev.touches.length===2){ev.preventDefault();active=false;skDrawing=null;skDrag=null;var a=ev.touches[0],b=ev.touches[1];pinch={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)||1,z:skZoom};}
+  },{passive:false});
+  canvas.addEventListener('touchmove',function(ev){
+    if(pinch&&ev.touches.length===2){ev.preventDefault();var a=ev.touches[0],b=ev.touches[1],d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)||1;skZoom=Math.max(.5,Math.min(4,pinch.z*d/pinch.d));canvas.style.width=(skZoom*100)+'%';canvas.style.height=(skZoom*100)+'%';}
+  },{passive:false});
+  canvas.addEventListener('touchend',function(ev){if(pinch&&ev.touches.length<2){pinch=null;setTimeout(skResize,20);}}, {passive:false});
+
+  /* canvas複製後に描画サイズと表示を復元 */
+  setTimeout(skResize,0);
 })();
 </script>
 </body>
