@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="水準測量野帳">
 <link rel="apple-touch-icon" sizes="180x180" href="level-icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="level-icon-192.png">
-<link rel="manifest" href="manifest.webmanifest?v=20261119-10">
+<link rel="manifest" href="manifest.webmanifest?v=20261120-01">
 
 <style>
 :root{
@@ -846,7 +846,7 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
       <span class="sk-selected-note" id="sk-selected-note">選択中</span>
       <label id="sk-width-lbl">幅</label><input id="sk-width" type="number" min="0.01" max="0.5" step="0.01" value="0.10" onchange="skApplyProps()">
       <button class="sk-tool" id="sk-line-convert" onclick="skConvertLineMode()" style="display:none">直線化</button>
-      <label id="sk-length-lbl">長さ</label><input id="sk-length" type="number" min="0.02" max="0.60" step="0.01" value="0.12" onchange="skApplyProps()">
+      <label id="sk-length-lbl">長さ</label><input id="sk-length" type="number" min="0.02" max="0.60" step="0.01" value="0.12" onchange="skApplyProps()"><label id="sk-size-lbl">大きさ</label><input id="sk-size" type="number" min="0.5" max="3.0" step="0.1" value="1.0" onchange="skApplyProps()">
       <button class="sk-tool" onclick="skDeleteSelected()">削除</button>
     </div>
     <button class="sk-help-btn" onclick="skToggleHelp()" aria-label="凡例">?</button>
@@ -2433,7 +2433,7 @@ updateCsvHeader();
     return;
   }
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./sw.js?v=20261119-10', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261120-01', {scope:'./'})
       .then(function(reg){
         console.log('Service Worker registered:', reg.scope);
         if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
@@ -2753,6 +2753,72 @@ var _skOldRenderItem=skRenderItem;skRenderItem=function(ctx,it,W,H){if(it.type!=
     var labelOffset=font*1.65;
     ctx.fillText(it.label||'水位標',x+nx*labelOffset,y+ny*labelOffset);
     ctx.restore();
+  };
+})();
+</script>
+
+<script>
+/* 位置図描画 最終修正 v6 */
+(function(){
+  var baseShowProps=skShowProps,baseApplyProps=skApplyProps,baseRenderItem=skRenderItem;
+  skShowProps=function(){
+    baseShowProps();
+    var it=skSelected>=0?skItems()[skSelected]:null;
+    var sl=document.getElementById('sk-size-lbl'),si=document.getElementById('sk-size');
+    if(!sl||!si)return;
+    var symbol=!!it&&!it.pts;
+    sl.style.display=symbol?'':'none';si.style.display=symbol?'':'none';
+    if(symbol)si.value=it.size||1;
+  };
+  skApplyProps=function(){
+    baseApplyProps();
+    var it=skSelected>=0?skItems()[skSelected]:null,si=document.getElementById('sk-size');
+    if(it&&si&&!it.pts)it.size=Math.max(.5,Math.min(3,Number(si.value)||1));
+    markSurveyDirty();skDraw();
+  };
+  function drawGauge(ctx,it,W,H){
+    var x=it.x*W,y=it.y*H,scale=it.size||1;
+    var a=(it.angle===undefined||it.angle===null)?-Math.PI/2:it.angle;
+    var L=Math.max(24,(it.length||.12)*Math.min(W,H));
+    var ux=Math.cos(a),uy=Math.sin(a),nx=-uy,ny=ux;
+    var x1=x-ux*L/2,y1=y-uy*L/2,x2=x+ux*L/2,y2=y+uy*L/2;
+    var font=Math.max(11,W/58)*scale,base=Math.max(4,W/190)*scale;
+    ctx.save();ctx.strokeStyle='#000';ctx.fillStyle='#000';ctx.lineCap='round';
+    ctx.lineWidth=base;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    ctx.lineCap='butt';ctx.lineWidth=Math.max(1,W/760)*scale;
+    for(var k=0;k<=20;k++){
+      var t=-.5+k/20,px=x+ux*L*t,py=y+uy*L*t;
+      var tick=(k%10===0?font*1.0:(k%5===0?font*.72:(k%2===0?font*.50:font*.32)));
+      ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px+nx*tick,py+ny*tick);ctx.stroke();
+    }
+    ctx.font='bold '+font+'px -apple-system,BlinkMacSystemFont,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(it.label||'水位標',x+nx*font*1.55,y+ny*font*1.55);ctx.restore();
+  }
+  function drawSymbol(ctx,it,W,H){
+    if(it.type==='gauge'){drawGauge(ctx,it,W,H);return;}
+    var x=it.x*W,y=it.y*H,scale=it.size||1,sz=Math.max(10,W/45)*scale;
+    ctx.save();ctx.strokeStyle='#000';ctx.fillStyle='#000';ctx.lineWidth=Math.max(2,W/350)*scale;ctx.font='bold '+Math.max(12,W/45)*scale+'px sans-serif';
+    if(it.type==='bm'){ctx.beginPath();ctx.arc(x,y,sz*.65,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(x,y,sz*.2,0,Math.PI*2);ctx.fill();}
+    else if(it.type==='water'){ctx.beginPath();ctx.arc(x,y,sz*.48,0,Math.PI*2);ctx.fill();}
+    else if(it.type==='instrument'){ctx.beginPath();ctx.moveTo(x,y-sz*.7);ctx.lineTo(x-sz*.7,y+sz*.55);ctx.lineTo(x+sz*.7,y+sz*.55);ctx.closePath();ctx.stroke();}
+    else if(it.type==='station'){ctx.strokeRect(x-sz*.7,y-sz*.45,sz*1.4,sz);ctx.beginPath();ctx.moveTo(x-sz*.85,y-sz*.45);ctx.lineTo(x,y-sz);ctx.lineTo(x+sz*.85,y-sz*.45);ctx.stroke();}
+    else if(it.type==='hsteel'){ctx.font='bold '+sz*1.8+'px sans-serif';ctx.fillText('H',x-sz*.55,y+sz*.55);}
+    else {ctx.fillText(it.label||'',x,y);ctx.restore();return;}
+    ctx.font='bold '+Math.max(12,W/45)*scale+'px sans-serif';ctx.fillText(it.label||'',x+sz,y-sz*.2);ctx.restore();
+  }
+  function openRiverEnds(ctx,left,right,W){
+    if(left.length<2||right.length<2)return;
+    ctx.save();ctx.strokeStyle='#fff';ctx.lineWidth=Math.max(8,W/160);ctx.lineCap='butt';
+    [[left[0],right[0]],[left[left.length-1],right[right.length-1]]].forEach(function(e){ctx.beginPath();ctx.moveTo(e[0].x,e[0].y);ctx.lineTo(e[1].x,e[1].y);ctx.stroke();});
+    ctx.strokeStyle='#000';ctx.lineWidth=Math.max(2,W/500);ctx.lineCap='round';
+    [[left[1],left[0]],[right[1],right[0]],[left[left.length-2],left[left.length-1]],[right[right.length-2],right[right.length-1]]].forEach(function(e){ctx.beginPath();ctx.moveTo(e[0].x,e[0].y);ctx.lineTo(e[1].x,e[1].y);ctx.stroke();});ctx.restore();
+  }
+  skRenderItem=function(ctx,it,W,H){
+    if(!it.pts){drawSymbol(ctx,it,W,H);return;}
+    if(it.type!=='river'){baseRenderItem(ctx,it,W,H);return;}
+    var off=(it.width||.10)*Math.min(W,H)/2,left=skOffsetPath(it.pts,off,W,H),right=skOffsetPath(it.pts,-off,W,H);
+    ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(2,W/500);ctx.lineCap='round';ctx.lineJoin='round';skStrokePts(ctx,left);skStrokePts(ctx,right);openRiverEnds(ctx,left,right,W);
+    var raw=it.pts.map(function(p){return{x:p.x*W,y:p.y*H};}),m=raw[Math.floor(raw.length/2)];ctx.fillStyle='#000';ctx.font=Math.max(12,W/48)+'px sans-serif';ctx.fillText('川',m.x+8,m.y);ctx.restore();
   };
 })();
 </script>
