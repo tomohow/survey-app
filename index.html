@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="水準測量野帳">
 <link rel="apple-touch-icon" sizes="180x180" href="level-icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="level-icon-192.png">
-<link rel="manifest" href="manifest.webmanifest?v=20261120-04">
+<link rel="manifest" href="manifest.webmanifest?v=20261120-06">
 
 <style>
 :root{
@@ -832,12 +832,12 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
         <button class="sk-tool active" data-sk-tool="pen" onclick="skSetTool('pen')">フリーハンド</button><button class="sk-tool" data-sk-tool="straight" onclick="skSetTool('straight')">直線</button>
         <button class="sk-tool" data-sk-tool="river" onclick="skSetTool('river')">川</button>
         <button class="sk-tool" data-sk-tool="bridge" onclick="skSetTool('bridge')">橋</button>
-        <button class="sk-tool" data-sk-tool="embankment" onclick="skSetTool('embankment')">築堤</button>
+        <button class="sk-tool" data-sk-tool="embankment" onclick="skSetTool('embankment')">道・築堤</button><button class="sk-tool" data-sk-tool="drop" onclick="skSetTool('drop')">落差工</button><button class="sk-tool" data-sk-tool="slope" onclick="skSetTool('slope')">斜面</button>
         <button class="sk-tool" data-sk-tool="bm" onclick="skSetTool('bm')">◎ BM</button>
         <button class="sk-tool" data-sk-tool="water" onclick="skSetTool('water')">● 水位測量</button>
         <button class="sk-tool" data-sk-tool="gauge" onclick="skSetTool('gauge')">▣ 水位標</button>
         <button class="sk-tool" data-sk-tool="instrument" onclick="skSetTool('instrument')">△ 器械</button>
-        <button class="sk-tool" data-sk-tool="station" onclick="skSetTool('station')">□ 局舎</button><button class="sk-tool" data-sk-tool="hsteel" onclick="skSetTool('hsteel')">H H鋼</button>
+        <button class="sk-tool" data-sk-tool="station" onclick="skSetTool('station')">□ 局舎</button><button class="sk-tool" data-sk-tool="hsteel" onclick="skSetTool('hsteel')">H鋼</button><button class="sk-tool" data-sk-tool="circle" onclick="skSetTool('circle')">○ 丸</button>
         <button class="sk-tool" data-sk-tool="arrow" onclick="skSetTool('arrow')">→ 方向</button>
         <button class="sk-tool" data-sk-tool="text" onclick="skSetTool('text')">文字</button>
       </div>
@@ -2433,7 +2433,7 @@ updateCsvHeader();
     return;
   }
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./sw.js?v=20261120-04', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261120-06', {scope:'./'})
       .then(function(reg){
         console.log('Service Worker registered:', reg.scope);
         if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
@@ -2948,6 +2948,47 @@ var _skOldRenderItem=skRenderItem;skRenderItem=function(ctx,it,W,H){if(it.type!=
   /* 長さ表示は正規化座標ではなく、画面上の実ピクセル長も併記 */
   var priorShow=skShowProps;
   skShowProps=function(){priorShow();var it=skSelected>=0?skItems()[skSelected]:null;if(!it||it.type!=='gauge')return;var note=document.getElementById('sk-selected-note'),cv=document.getElementById('sketch-canvas');if(note&&cv){var px=Math.round((it.length||0)*Math.min(cv.clientWidth,cv.clientHeight));note.textContent='選択中：水位標 / 表示長 '+px+'px';}};
+})();
+</script>
+
+<script>
+/* 平面図記号拡張 v11：道・築堤、落差工、斜面、丸 */
+(function(){
+  var prevDown=skDown,prevShow=skShowProps,prevApply=skApplyProps,prevRender=skRenderItem;
+  skDown=function(ev){
+    if(skTool==='circle'){
+      ev.preventDefault();var p=skPos(ev);skItems().push({type:'circle',x:p.x,y:p.y,label:'',size:.60});skSelected=skItems().length-1;markSurveyDirty();skShowProps();skDraw();return;
+    }
+    if(['drop','slope'].indexOf(skTool)>=0){ev.preventDefault();var p=skPos(ev);skDrawing={type:skTool,pts:[p],width:skTool==='slope'?.09:.055,reverse:false};return;}
+    prevDown(ev);
+  };
+  /* 既存move/upはskDrawingの2点線として処理可能。確定後も選択・移動できる。 */
+  skShowProps=function(){
+    prevShow();var it=skSelected>=0?skItems()[skSelected]:null;if(!it)return;
+    var canWidth=/river|bridge|embankment|drop|slope/.test(it.type),wl=document.getElementById('sk-width-lbl'),wi=document.getElementById('sk-width');
+    if(wl)wl.style.display=canWidth?'':'none';if(wi){wi.style.display=canWidth?'':'none';if(canWidth)wi.value=it.width||.06;}
+    var names={embankment:'道・築堤',drop:'落差工',slope:'斜面',circle:'丸'};if(names[it.type])document.getElementById('sk-selected-note').textContent='選択中：'+names[it.type];
+  };
+  skApplyProps=function(){prevApply();var it=skSelected>=0?skItems()[skSelected]:null;if(it&&/embankment|drop|slope/.test(it.type))it.width=Math.max(.02,Math.min(.30,Number(document.getElementById('sk-width').value)||.07));markSurveyDirty();skDraw();};
+  function parallel(ctx,it,W,H){var off=(it.width||.07)*Math.min(W,H)/2,left=skOffsetPath(it.pts,off,W,H),right=skOffsetPath(it.pts,-off,W,H);ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(2,W/500);ctx.lineCap='round';ctx.lineJoin='round';skStrokePts(ctx,left);skStrokePts(ctx,right);ctx.restore();return{left:left,right:right};}
+  function hatch(ctx,left,right,W,mode){
+    if(left.length<2||right.length<2)return;var n=Math.max(4,Math.min(18,Math.round(Math.hypot(left[left.length-1].x-left[0].x,left[left.length-1].y-left[0].y)/28)));
+    ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1,W/850);
+    for(var k=1;k<n;k++){var t=k/n,li=Math.min(left.length-1,Math.round(t*(left.length-1))),ri=Math.min(right.length-1,Math.round(t*(right.length-1))),a=left[li],b=right[ri];
+      var ex=mode==='drop'?(a.x+(b.x-a.x)*.72):b.x,ey=mode==='drop'?(a.y+(b.y-a.y)*.72):b.y;
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(ex,ey);ctx.stroke();}
+    ctx.restore();
+  }
+  skRenderItem=function(ctx,it,W,H){
+    if(it.type==='embankment'){parallel(ctx,it,W,H);return;}
+    if(it.type==='slope'){var q=parallel(ctx,it,W,H);hatch(ctx,q.left,q.right,W,'slope');return;}
+    if(it.type==='drop'){var q=parallel(ctx,it,W,H);hatch(ctx,q.left,q.right,W,'drop');return;}
+    if(it.type==='circle'){var r=Math.max(5,W/75)*(it.size||.60);ctx.save();ctx.strokeStyle='#000';ctx.fillStyle='#fff';ctx.lineWidth=Math.max(1.4,W/650);ctx.beginPath();ctx.arc(it.x*W,it.y*H,r,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();return;}
+    if(it.type==='hsteel'){var z=Math.max(10,W/45)*(it.size||.60);ctx.save();ctx.fillStyle='#000';ctx.font='bold '+z*1.8+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('H',it.x*W,it.y*H);ctx.restore();return;}
+    prevRender(ctx,it,W,H);
+  };
+  /* 既存の築堤は道・築堤として同じ二重線描画になる。 */
+  skDraw();
 })();
 </script>
 </body>
