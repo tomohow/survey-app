@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="水準測量野帳">
 <link rel="apple-touch-icon" sizes="180x180" href="level-icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="level-icon-192.png">
-<link rel="manifest" href="manifest.webmanifest?v=20261120-03">
+<link rel="manifest" href="manifest.webmanifest?v=20261120-04">
 
 <style>
 :root{
@@ -2433,7 +2433,7 @@ updateCsvHeader();
     return;
   }
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./sw.js?v=20261120-03', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261120-04', {scope:'./'})
       .then(function(reg){
         console.log('Service Worker registered:', reg.scope);
         if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
@@ -2919,6 +2919,35 @@ var _skOldRenderItem=skRenderItem;skRenderItem=function(ctx,it,W,H){if(it.type!=
 
   /* canvas複製後に描画サイズと表示を復元 */
   setTimeout(skResize,0);
+})();
+</script>
+
+<script>
+/* 水位標ライブ描画・実長一致・既定記号縮小 v9 */
+(function(){
+  /* 新規配置する一般記号は橋・川との釣り合いを考え、既定0.60倍 */
+  var baseItems=skItems;
+  var previousDown=skDown;
+  function setDefaultSizeAfterAdd(before){var a=skItems();if(a.length>before){var it=a[a.length-1];if(!it.pts&&it.type!=='gauge'&&(it.size===undefined||it.size===null))it.size=.60;}}
+  skDown=function(ev){var before=skItems().length;previousDown(ev);setDefaultSizeAfterAdd(before);};
+
+  /* 作図中の水位標を、確定後と同じ定規としてリアルタイム描画 */
+  function gaugeModelFromDrawing(d){if(!d||d.type!=='gauge'||!d.pts||d.pts.length<2)return null;var a=d.pts[0],b=d.pts[d.pts.length-1],dx=b.x-a.x,dy=b.y-a.y;return{type:'gauge',x:(a.x+b.x)/2,y:(a.y+b.y)/2,length:Math.max(.001,Math.hypot(dx,dy)),angle:Math.atan2(dy,dx),size:1,label:'水位標'};}
+  var priorRenderTo=skRenderTo;
+  skRenderTo=function(ctx,W,H){
+    var pending=skDrawing&&skDrawing.type==='gauge'?skDrawing:null;
+    if(pending)skDrawing=null;
+    priorRenderTo(ctx,W,H);
+    if(pending){skDrawing=pending;var g=gaugeModelFromDrawing(pending);if(g)skRenderItem(ctx,g,W,H);}
+  };
+
+  /* pointermove後、必ず描画中の水位標モデルで再描画 */
+  var c=document.getElementById('sketch-canvas');
+  if(c)c.addEventListener('pointermove',function(){if(skDrawing&&skDrawing.type==='gauge')skDraw();},true);
+
+  /* 長さ表示は正規化座標ではなく、画面上の実ピクセル長も併記 */
+  var priorShow=skShowProps;
+  skShowProps=function(){priorShow();var it=skSelected>=0?skItems()[skSelected]:null;if(!it||it.type!=='gauge')return;var note=document.getElementById('sk-selected-note'),cv=document.getElementById('sketch-canvas');if(note&&cv){var px=Math.round((it.length||0)*Math.min(cv.clientWidth,cv.clientHeight));note.textContent='選択中：水位標 / 表示長 '+px+'px';}};
 })();
 </script>
 </body>
