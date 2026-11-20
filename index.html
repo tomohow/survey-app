@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="水準測量野帳">
 <link rel="apple-touch-icon" sizes="180x180" href="level-icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="level-icon-192.png">
-<link rel="manifest" href="manifest.webmanifest?v=20261120-09">
+<link rel="manifest" href="manifest.webmanifest?v=20261120-11">
 
 <style>
 :root{
@@ -837,7 +837,7 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
         <button class="sk-tool" data-sk-tool="water" onclick="skSetTool('water')">● 水位測量</button>
         <button class="sk-tool" data-sk-tool="gauge" onclick="skSetTool('gauge')">▣ 水位標</button>
         <button class="sk-tool" data-sk-tool="instrument" onclick="skSetTool('instrument')">△ 器械</button>
-        <button class="sk-tool" data-sk-tool="station" onclick="skSetTool('station')">□ 局舎</button><button class="sk-tool" data-sk-tool="hsteel" onclick="skSetTool('hsteel')">H鋼</button><button class="sk-tool" data-sk-tool="circle" onclick="skSetTool('circle')">○ 丸</button>
+        <button class="sk-tool" data-sk-tool="station" onclick="skSetTool('station')">□ 局舎</button><button class="sk-tool" data-sk-tool="hsteel" onclick="skSetTool('hsteel')">H鋼</button><button class="sk-tool" data-sk-tool="circle" onclick="skSetTool('circle')">○ 丸</button><button class="sk-tool" data-sk-tool="square" onclick="skSetTool('square')">□ 四角</button>
         <button class="sk-tool" data-sk-tool="arrow" onclick="skSetTool('arrow')">→ 方向</button>
         <button class="sk-tool" data-sk-tool="text" onclick="skSetTool('text')">文字</button>
       </div>
@@ -2433,7 +2433,7 @@ updateCsvHeader();
     return;
   }
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./sw.js?v=20261120-09', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261120-11', {scope:'./'})
       .then(function(reg){
         console.log('Service Worker registered:', reg.scope);
         if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
@@ -3085,6 +3085,53 @@ var _skOldRenderItem=skRenderItem;skRenderItem=function(ctx,it,W,H){if(it.type!=
     ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(2,W/500);ctx.lineCap='round';ctx.lineJoin='round';skStrokePts(ctx,A);skStrokePts(ctx,B);ctx.restore();
   };
   ['plan','section'].forEach(function(v){(window.sketchStore&&window.sketchStore[v]||[]).forEach(function(it){if(it.type==='embankment'&&(!it.width||it.width<=.12))it.width=DEFAULT_ROAD_WIDTH;});});
+  skDraw();
+})();
+</script>
+
+<script>
+/* 斜面ケバ斜線化 v15 */
+(function(){
+  var oldRender=skRenderItem;
+  function sample(path,t){var f=Math.max(0,Math.min(1,t))*(path.length-1),i=Math.floor(f),j=Math.min(path.length-1,i+1),r=f-i;return{x:path[i].x+(path[j].x-path[i].x)*r,y:path[i].y+(path[j].y-path[i].y)*r};}
+  skRenderItem=function(ctx,it,W,H){
+    if(it.type!=='slope'){oldRender(ctx,it,W,H);return;}
+    var off=(it.width||.10)*Math.min(W,H)/2;
+    var upper=skOffsetPath(it.pts,off,W,H),lower=skOffsetPath(it.pts,-off,W,H);
+    if(upper.length<2||lower.length<2)return;
+    ctx.save();ctx.strokeStyle='#000';ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=Math.max(2,W/500);
+    skStrokePts(ctx,upper);skStrokePts(ctx,lower);
+    var a=upper[0],b=upper[upper.length-1],n=Math.max(5,Math.min(22,Math.round(Math.hypot(b.x-a.x,b.y-a.y)/28)));
+    ctx.lineWidth=Math.max(1,W/850);
+    for(var k=1;k<n;k++){
+      var t=k/n,u=sample(upper,t),l=sample(lower,Math.min(1,t+.025));
+      var rate=(k%4===0?.92:(k%2===0?.72:.55));
+      ctx.beginPath();ctx.moveTo(u.x,u.y);ctx.lineTo(u.x+(l.x-u.x)*rate,u.y+(l.y-u.y)*rate);ctx.stroke();
+    }
+    ctx.restore();
+  };
+  skDraw();
+})();
+</script>
+
+<script>
+/* 四角アイコン追加 v16 */
+(function(){
+  var oldDown=skDown,oldShow=skShowProps,oldRender=skRenderItem;
+  skDown=function(ev){
+    if(skTool==='square'){
+      ev.preventDefault();var p=skPos(ev);
+      skItems().push({type:'square',x:p.x,y:p.y,label:'',size:.60});
+      skSelected=skItems().length-1;markSurveyDirty();skShowProps();skDraw();return;
+    }
+    oldDown(ev);
+  };
+  skShowProps=function(){oldShow();var it=skSelected>=0?skItems()[skSelected]:null;if(it&&it.type==='square')document.getElementById('sk-selected-note').textContent='選択中：四角';};
+  skRenderItem=function(ctx,it,W,H){
+    if(it.type!=='square'){oldRender(ctx,it,W,H);return;}
+    var sc=it.size||.60,side=Math.max(12,W/42)*sc,x=it.x*W,y=it.y*H;
+    ctx.save();ctx.strokeStyle='#000';ctx.fillStyle='#fff';ctx.lineWidth=Math.max(1.5,W/650)*sc;ctx.strokeRect(x-side/2,y-side/2,side,side);ctx.restore();
+  };
   skDraw();
 })();
 </script>
