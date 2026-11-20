@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="水準測量野帳">
 <link rel="apple-touch-icon" sizes="180x180" href="level-icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="level-icon-192.png">
-<link rel="manifest" href="manifest.webmanifest?v=20261120-01">
+<link rel="manifest" href="manifest.webmanifest?v=20261120-02">
 
 <style>
 :root{
@@ -846,7 +846,7 @@ td{padding:7px 2px;text-align:center;vertical-align:middle;overflow:hidden;text-
       <span class="sk-selected-note" id="sk-selected-note">選択中</span>
       <label id="sk-width-lbl">幅</label><input id="sk-width" type="number" min="0.01" max="0.5" step="0.01" value="0.10" onchange="skApplyProps()">
       <button class="sk-tool" id="sk-line-convert" onclick="skConvertLineMode()" style="display:none">直線化</button>
-      <label id="sk-length-lbl">長さ</label><input id="sk-length" type="number" min="0.02" max="0.60" step="0.01" value="0.12" onchange="skApplyProps()"><label id="sk-size-lbl">大きさ</label><input id="sk-size" type="number" min="0.5" max="3.0" step="0.1" value="1.0" onchange="skApplyProps()">
+      <label id="sk-length-lbl">長さ</label><input id="sk-length" type="number" min="0.02" max="0.60" step="0.01" value="0.12" onchange="skApplyProps()"><label id="sk-size-lbl">大きさ</label><input id="sk-size" type="number" min="0.5" max="3.0" step="0.1" value="1.0" onchange="skApplyProps()"><label id="sk-angle-lbl">角度°</label><input id="sk-angle" type="number" min="-180" max="180" step="1" value="0" onchange="skApplyProps()">
       <button class="sk-tool" onclick="skDeleteSelected()">削除</button>
     </div>
     <button class="sk-help-btn" onclick="skToggleHelp()" aria-label="凡例">?</button>
@@ -2433,7 +2433,7 @@ updateCsvHeader();
     return;
   }
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./sw.js?v=20261120-01', {scope:'./'})
+    navigator.serviceWorker.register('./sw.js?v=20261120-02', {scope:'./'})
       .then(function(reg){
         console.log('Service Worker registered:', reg.scope);
         if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
@@ -2819,6 +2819,51 @@ var _skOldRenderItem=skRenderItem;skRenderItem=function(ctx,it,W,H){if(it.type!=
     var off=(it.width||.10)*Math.min(W,H)/2,left=skOffsetPath(it.pts,off,W,H),right=skOffsetPath(it.pts,-off,W,H);
     ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=Math.max(2,W/500);ctx.lineCap='round';ctx.lineJoin='round';skStrokePts(ctx,left);skStrokePts(ctx,right);openRiverEnds(ctx,left,right,W);
     var raw=it.pts.map(function(p){return{x:p.x*W,y:p.y*H};}),m=raw[Math.floor(raw.length/2)];ctx.fillStyle='#000';ctx.font=Math.max(12,W/48)+'px sans-serif';ctx.fillText('川',m.x+8,m.y);ctx.restore();
+  };
+})();
+</script>
+
+<script>
+/* 水位標 選択後直接調整 v7 */
+(function(){
+  var priorShow=skShowProps,priorApply=skApplyProps,priorRenderTo=skRenderTo;
+  skShowProps=function(){
+    priorShow();
+    var it=skSelected>=0?skItems()[skSelected]:null;
+    var al=document.getElementById('sk-angle-lbl'),ai=document.getElementById('sk-angle');
+    var on=!!it&&it.type==='gauge';
+    if(al)al.style.display=on?'':'none';if(ai){ai.style.display=on?'':'none';if(on)ai.value=Math.round((it.angle||0)*180/Math.PI);}
+  };
+  skApplyProps=function(){
+    priorApply();
+    var it=skSelected>=0?skItems()[skSelected]:null,ai=document.getElementById('sk-angle');
+    if(it&&it.type==='gauge'&&ai)it.angle=(Number(ai.value)||0)*Math.PI/180;
+    markSurveyDirty();skDraw();
+  };
+  function gaugeEnds(it){var a=(it.angle===undefined||it.angle===null)?0:it.angle,L=it.length||.12,ux=Math.cos(a),uy=Math.sin(a);return[{x:it.x-ux*L/2,y:it.y-uy*L/2},{x:it.x+ux*L/2,y:it.y+uy*L/2}];}
+  function near(p,q,r){return Math.hypot(p.x-q.x,p.y-q.y)<r;}
+  var oldDown=skDown,oldMove=skMove,oldUp=skUp;
+  skDown=function(ev){
+    if(skTool!=='select'){oldDown(ev);return;}
+    ev.preventDefault();var p=skPos(ev),h=skHit(p);skSelected=h;
+    if(h>=0){var it=skItems()[h];skDrag={start:p,orig:JSON.parse(JSON.stringify(it)),handle:null};if(it.type==='gauge'){var e=gaugeEnds(it);if(near(p,e[0],.065))skDrag.handle='gauge-start';else if(near(p,e[1],.065))skDrag.handle='gauge-end';}}
+    skShowProps();skDraw();
+  };
+  skMove=function(ev){
+    if(!(skDrag&&skSelected>=0&&skItems()[skSelected].type==='gauge'&&/^gauge-/.test(skDrag.handle||''))){oldMove(ev);return;}
+    ev.preventDefault();var p=skPos(ev),it=skItems()[skSelected],o=skDrag.orig,e=gaugeEnds(o),fixed=skDrag.handle==='gauge-start'?e[1]:e[0];
+    it.x=(fixed.x+p.x)/2;it.y=(fixed.y+p.y)/2;it.length=Math.max(.02,Math.hypot(p.x-fixed.x,p.y-fixed.y));it.angle=skDrag.handle==='gauge-start'?Math.atan2(fixed.y-p.y,fixed.x-p.x):Math.atan2(p.y-fixed.y,p.x-fixed.x);skShowProps();skDraw();
+  };
+  skUp=function(ev){oldUp(ev);};
+  /* Rebind mouse handlers to the final functions. Touch handlers already call global skDown/skMove/skUp dynamically. */
+  var c=document.getElementById('sketch-canvas');if(c){c.addEventListener('mousedown',skDown,true);c.addEventListener('mousemove',skMove,true);window.addEventListener('mouseup',skUp,true);}
+  skRenderTo=function(ctx,W,H){
+    priorRenderTo(ctx,W,H);
+    if(skSelected<0)return;var it=skItems()[skSelected];if(!it||it.type!=='gauge')return;
+    var e=gaugeEnds(it),r=Math.max(7,W/130),a=(it.angle===undefined||it.angle===null)?0:it.angle,ux=Math.cos(a),uy=Math.sin(a);
+    ctx.save();ctx.fillStyle='#fff';ctx.strokeStyle='#4f8ef7';ctx.lineWidth=Math.max(2,W/500);
+    e.forEach(function(q){ctx.beginPath();ctx.arc(q.x*W,q.y*H,r,0,Math.PI*2);ctx.fill();ctx.stroke();});
+    /* rotation handle above the centre */var nx=-uy,ny=ux,R={x:it.x+nx*.09,y:it.y+ny*.09};ctx.beginPath();ctx.moveTo(it.x*W,it.y*H);ctx.lineTo(R.x*W,R.y*H);ctx.stroke();ctx.beginPath();ctx.arc(R.x*W,R.y*H,r*.8,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
   };
 })();
 </script>
